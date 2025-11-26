@@ -17,6 +17,7 @@ import DetalleSolicitudScreen from './src/screens/DetalleSolicitudScreen';
 import ResultadoEvaluacionesScreen from './src/screens/ResultadoEvaluaciones';
 import CursosScreen from './src/screens/CursosScreen';
 import DetalleCursosScreen from './src/screens/DetalleCursosScreen';
+import ComunicacionScreen from './src/screens/ComunicacionScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -36,6 +37,9 @@ export default function App() {
             <Stack.Screen name="DetalleSolicitud" component={DetalleSolicitudScreen} options={{ title: 'Detalle de la Solicitud de Ayuda' }} />
             <Stack.Screen name="Cursos" component={CursosScreen}  />
             <Stack.Screen name="DetalleCursos" component={DetalleCursosScreen}/>
+            <Stack.Screen name="Comunicacion" component={ComunicacionScreen} />
+
+            
           </Stack.Navigator>
           <StatusBar style="auto" />
         </NavigationContainer>

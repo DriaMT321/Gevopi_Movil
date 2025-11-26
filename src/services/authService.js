@@ -8,6 +8,7 @@ export const login = async (ci, contrasena) => {
     ci,
     contrasena,
   });
+
   authToken = response.data.access_token;
   loggedCi = ci;
 

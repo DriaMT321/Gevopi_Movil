@@ -481,10 +481,17 @@ export default function PerfilScreen() {
               <Ionicons name="file-tray-full-outline" size={24} color={colors.amarillo} />
             </TouchableOpacity>
 
+            
+
             <TouchableOpacity style={styles.emergenciaButton} onPress={openEmergencia}>
               <Ionicons name="megaphone-outline" size={24} color="white" />
             </TouchableOpacity>
+
+
+            
           </View>
+
+          
 
         </View>
 
@@ -548,13 +555,45 @@ export default function PerfilScreen() {
               <FontAwesome5 name="inbox" size={24} color={colors.gray} />
               <Text style={styles.emptyStateText}>No hay cursos asignados</Text>
             </View>
+            
           )}
         </TouchableOpacity>
+
+        <View style={{ alignItems: 'center', marginTop: 20, marginBottom: 40 }}>
+  <TouchableOpacity
+    onPress={() => navigation.navigate("Comunicacion")}
+    style={{
+      backgroundColor: colors.naranjaFuerte,
+      paddingVertical: 14,
+      paddingHorizontal: 30,
+      borderRadius: 30,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 10,
+      elevation: 3
+    }}
+  >
+    <Ionicons name="chatbox-ellipses-outline" size={22} color="#fff" />
+    <Text style={{ color: "#fff", fontSize: 18, fontWeight: "bold" }}>
+      Comunicación
+    </Text>
+  </TouchableOpacity>
+</View>
+
+
+        
 
 
 
       </ScrollView>
 
+<TouchableOpacity
+              style={styles.circleButton}
+              onPress={() => navigation.navigate("Comunicacion")}
+            >
+              <Ionicons name="chatbox-ellipses-outline" size={24} color={colors.amarillo} />
+            </TouchableOpacity>
       {/* Modal Información Voluntario */}
       <Modal transparent visible={infoVisible} animationType="fade">
         <Pressable style={styles.modalBackdrop} onPress={closeInfo} />
@@ -605,6 +644,7 @@ export default function PerfilScreen() {
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
             >
+              
               {/* Tipo de emergencia */}
               <View style={styles.modalSection}>
                 <Text style={styles.modalLabel}>Tipo de emergencia</Text>
@@ -671,7 +711,11 @@ export default function PerfilScreen() {
               >
                 <Text style={styles.enviarButtonText}>ENVIAR</Text>
               </TouchableOpacity>
+
+              
             </ScrollView>
+
+            
           </Animated.View>
         </Modal>
       </KeyboardAvoidingView>
