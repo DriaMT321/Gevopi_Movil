@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { Dropdown } from 'react-native-element-dropdown';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import MapView, { Marker } from 'react-native-maps';
+import { MapView, Marker } from '../components/MapView';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import styles from '../styles/solicitudesStyles';
 import colors from '../themes/colors';

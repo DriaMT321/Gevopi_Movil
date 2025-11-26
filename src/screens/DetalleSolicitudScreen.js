@@ -7,7 +7,7 @@ import {
     TouchableWithoutFeedback,
     Linking,
 } from 'react-native';
-import MapView, { Marker } from 'react-native-maps';
+import { MapView, Marker } from '../components/MapView';
 import { FontAwesome5, MaterialIcons } from '@expo/vector-icons';
 import styles from '../styles/detalleSolicitudStyles';
 import colors from '../themes/colors';

@@ -130,8 +130,23 @@ export default function LoginScreen() {
       });
 
     } catch (error) {
-      Alert.alert('Error de autenticación', 'Usuario o contraseña incorrectos');
       console.error("Error al iniciar sesión:", error);
+      
+      let errorMessage = 'Usuario o contraseña incorrectos';
+      
+      if (error.code === 'ERR_NETWORK') {
+        errorMessage = 'No se pudo conectar al servidor. Verifica:\n\n' +
+                      '1. Que el servidor backend esté corriendo\n' +
+                      '2. La URL del servidor en api.js\n' +
+                      '3. Configuración CORS del servidor';
+      } else if (error.code === 'ECONNABORTED') {
+        errorMessage = 'El servidor tardó demasiado en responder';
+      } else if (error.response) {
+        // El servidor respondió con un error
+        errorMessage = error.response.data?.message || 'Error de autenticación';
+      }
+      
+      Alert.alert('Error de inicio de sesión', errorMessage);
     }
   };
 
