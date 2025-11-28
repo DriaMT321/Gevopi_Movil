@@ -1,5 +1,16 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  Alert,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform
+} from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import colors from '../themes/colors'; // si tienes tema
 import { getLoggedCi } from '../services/authService';
 import { getVoluntarioByCi } from '../services/voluntarioService';
 import api from '../services/api';
@@ -20,7 +31,7 @@ export default function ComunicacionScreen() {
 
       await api.post("/consultas", {
         voluntario_id: user.id,
-        mensaje
+        mensaje: mensaje.trim()
       });
 
       Alert.alert("Éxito", "Mensaje enviado correctamente");
@@ -33,43 +44,92 @@ export default function ComunicacionScreen() {
   };
 
   return (
-    <View style={{ padding: 20 }}>
-      <Text style={{ fontSize: 22, fontWeight: 'bold', marginBottom: 20 }}>
-        Comunicación con Administrador
-      </Text>
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: '#f8f8f8' }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
 
-      <TextInput
-        placeholder="Escribe tu mensaje..."
-        value={mensaje}
-        onChangeText={setMensaje}
-        multiline
-        style={{
-          height: 150,
-          borderWidth: 1,
-          borderColor: "#ccc",
-          borderRadius: 10,
-          padding: 10,
-          fontSize: 16,
-          backgroundColor: "#fff"
-        }}
-      />
-
-      <TouchableOpacity
-        style={{
-          backgroundColor: "#ff9800",
-          padding: 15,
-          borderRadius: 10,
-          alignItems: "center",
-          marginTop: 20
-        }}
-        onPress={enviarConsulta}
+      <ScrollView
+        contentContainerStyle={{ padding: 20 }}
+        keyboardShouldPersistTaps="handled"
       >
-        <Text style={{ color: "#fff", fontSize: 18, fontWeight: "bold" }}>
-          Enviar Mensaje
+
+        {/* Título */}
+        <Text style={{
+          fontSize: 24,
+          fontWeight: 'bold',
+          marginBottom: 10,
+          marginTop: 40,
+          color: '#333'
+        }}>
+          Comunicación con el Administrador
         </Text>
-      </TouchableOpacity>
-    </View>
+
+        <Text style={{
+          fontSize: 14,
+          color: '#777',
+          marginBottom: 20
+        }}>
+          Escribe tu mensaje y será enviado al equipo administrativo.
+        </Text>
+
+        {/* Caja estilo chat */}
+        <View
+          style={{
+            backgroundColor: 'white',
+            borderRadius: 12,
+            padding: 15,
+            borderWidth: 1,
+            borderColor: '#ddd',
+            minHeight: 150,
+            marginBottom: 20,
+            elevation: 2,
+          }}
+        >
+          <TextInput
+            placeholder="Escribe tu mensaje..."
+            value={mensaje}
+            onChangeText={setMensaje}
+            multiline
+            style={{
+              fontSize: 16,
+              color: '#444',
+              height: '100%',
+              textAlignVertical: 'top',
+            }}
+          />
+        </View>
+
+        {/* Botón enviar */}
+        <TouchableOpacity
+          style={{
+            backgroundColor: colors.naranjaFuerte ?? '#ff9800',
+            paddingVertical: 14,
+            borderRadius: 10,
+            flexDirection: 'row',
+            justifyContent: 'center',
+            alignItems: 'center',
+            elevation: 3,
+          }}
+          onPress={enviarConsulta}
+        >
+          <Ionicons
+            name="send-outline"
+            size={20}
+            color="white"
+            style={{ marginRight: 8 }}
+          />
+          <Text style={{
+            color: 'white',
+            fontSize: 18,
+            fontWeight: '600',
+          }}>
+            Enviar Mensaje
+          </Text>
+        </TouchableOpacity>
+
+      </ScrollView>
+
+    </KeyboardAvoidingView>
   );
 }
-
-
