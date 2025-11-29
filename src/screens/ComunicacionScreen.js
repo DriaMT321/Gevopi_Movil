@@ -19,22 +19,20 @@ import colors from '../themes/colors';
 import { getLoggedCi } from '../services/authService';
 import { getVoluntarioByCi } from '../services/voluntarioService';
 import api from '../services/api';
-import echo from '../services/echo'; // <-- nuevo
+import echo from '../services/echo';
 
 const OFFLINE_KEY = 'consultas_pendientes';
 
 export default function ComunicacionScreen() {
   const navigation = useNavigation();
   const [voluntario, setVoluntario] = useState(null);
-  const [mensajes, setMensajes] = useState([]); // [{id, from, text, at}]
+  const [mensajes, setMensajes] = useState([]);
   const [mensaje, setMensaje] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
 
-  const pollRef = useRef(null);
   const listRef = useRef(null);
 
-  // helper para hacer scroll al final
   const scrollToBottom = () => {
     setTimeout(() => {
       if (listRef.current) {
@@ -43,38 +41,31 @@ export default function ComunicacionScreen() {
     }, 200);
   };
 
-  // ------------------ helpers backend ------------------ //
+  const cargarMensajes = async (silent = false, voluntarioId = null) => {
+    const id = voluntarioId ?? voluntario?.id;
+    if (!id) return;
 
-const cargarMensajes = async (silent = false, voluntarioId = null) => {
-  const id = voluntarioId ?? voluntario?.id;
-  if (!id) return;
+    try {
+      if (!silent) setLoading(true);
 
-  try {
-    if (!silent) setLoading(true);
+      const resp = await api.get(`/chat-mensajes?voluntario_id=${id}`);
+      const mensajesApi = resp.data.data || [];
 
-    const resp = await api.get(`/chat-mensajes?voluntario_id=${id}`);
-    const mensajesApi = resp.data.data || [];
+      const items = mensajesApi.map((m) => ({
+        id: m.id,
+        from: m.de,
+        text: m.texto,
+        at: m.created_at,
+      }));
 
-    const items = mensajesApi.map((m) => ({
-      id: m.id,
-      from: m.de,            // 'voluntario' | 'admin'
-      text: m.texto,
-      at: m.created_at,
-    }));
-
-    setMensajes(items);
-    scrollToBottom();
-  } catch (error) {
-    console.log('Error cargando mensajes', error);
-  } finally {
-    if (!silent) setLoading(false);
-  }
-};
-
-
-
-
-
+      setMensajes(items);
+      scrollToBottom();
+    } catch (error) {
+      console.log('Error cargando mensajes', error);
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  };
 
   const guardarPendiente = async (payload) => {
     try {
@@ -99,7 +90,7 @@ const cargarMensajes = async (silent = false, voluntarioId = null) => {
 
       for (const item of arr) {
         try {
-          await api.post('/consultas', item);
+          await api.post('/chat-mensajes', item); // ← Cambiado de /consultas a /chat-mensajes
         } catch (e) {
           nuevos.push(item);
         }
@@ -120,44 +111,42 @@ const cargarMensajes = async (silent = false, voluntarioId = null) => {
   };
 
   const enviarConsulta = async () => {
-  const texto = mensaje.trim();
-  if (!texto) return;
+    const texto = mensaje.trim();
+    if (!texto) return;
 
-  if (!voluntario) {
-    Alert.alert('Error', 'No se encontró tu usuario');
-    return;
-  }
+    if (!voluntario) {
+      Alert.alert('Error', 'No se encontró tu usuario');
+      return;
+    }
 
-  const payload = {
-    voluntario_id: voluntario.id,
-    de: 'voluntario',
-    texto,
+    const payload = {
+      voluntario_id: voluntario.id,
+      de: 'voluntario',
+      texto,
+    };
+
+    setSending(true);
+
+    try {
+      await api.post('/chat-mensajes', payload);
+      setMensaje('');
+      
+      // NO recargamos aquí, confiamos en el evento WebSocket
+      // await cargarMensajes(true);
+    } catch (error) {
+      console.log('Error enviando consulta, guardando offline:', error);
+      await guardarPendiente(payload);
+      setMensaje('');
+      Alert.alert(
+        'Sin conexión',
+        'No se pudo enviar ahora. El mensaje se guardará localmente.'
+      );
+    } finally {
+      setSending(false);
+    }
   };
 
-  setSending(true);
-
-  try {
-    await api.post('/chat-mensajes', payload);
-    setMensaje('');
-    // podemos depender del evento en tiempo real,
-    // pero por seguridad recargamos silenciosamente:
-    await cargarMensajes(true);
-  } catch (error) {
-    console.log('Error enviando consulta, guardando offline:', error);
-    await guardarPendiente(payload);
-    setMensaje('');
-    Alert.alert(
-      'Sin conexión',
-      'No se pudo enviar ahora. El mensaje se guardó y se enviará cuando tengas internet.'
-    );
-  } finally {
-    setSending(false);
-  }
-};
-
-
-  // ------------------ useEffect inicial ------------------ //
-
+  // Inicialización
   useEffect(() => {
     let mounted = true;
 
@@ -175,14 +164,7 @@ const cargarMensajes = async (silent = false, voluntarioId = null) => {
         setVoluntario(u);
 
         await procesarPendientes();
-        // 🔴 AQUÍ: pasamos el id explícito
         await cargarMensajes(false, u.id);
-
-        /*
-        pollRef.current = setInterval(() => {
-          cargarMensajes(true);
-        }, 15000);
-        */
       } catch (e) {
         console.log('Error init ComunicacionScreen', e);
       } finally {
@@ -190,60 +172,87 @@ const cargarMensajes = async (silent = false, voluntarioId = null) => {
       }
     };
 
-
     init();
 
     return () => {
       mounted = false;
-      if (pollRef.current) clearInterval(pollRef.current);
     };
   }, []);
 
-  // ------------------ WebSockets con Reverb ------------------ //
+  // WebSockets con Reverb
+  useEffect(() => {
+    if (!voluntario) return;
 
-useEffect(() => {
-  if (!voluntario) return;
+    console.log('🔌 Conectando al canal consultas para voluntario:', voluntario.id);
 
-  const channel = echo.channel('consultas');
+    const channel = echo.channel('consultas');
 
-  const onMensaje = ({ mensaje }) => {
-    try {
-      if (!mensaje || mensaje.voluntario_id !== voluntario.id) return;
+    // 🔴 CAMBIO CRÍTICO: Agregar el punto antes del nombre del evento
+    const onMensaje = (event) => {
+      console.log('📩 Evento recibido:', event);
 
-      setMensajes((prev) => {
-        if (prev.some(m => m.id === mensaje.id)) {
-          return prev; // ya lo tenemos
+      try {
+        const mensaje = event.mensaje;
+        
+        if (!mensaje) {
+          console.log('⚠️ Evento sin mensaje');
+          return;
         }
-        return [
-          ...prev,
-          {
+
+        // Filtrar solo mensajes de este voluntario (comparación flexible)
+        if (mensaje.voluntario_id != voluntario.id) { // Usar == en lugar de ===
+          console.log('⏭️ Mensaje de otro voluntario, ignorando');
+          return;
+        }
+
+        console.log('✅ Agregando mensaje al chat');
+
+        setMensajes((prev) => {
+          // Evitar duplicados
+          if (prev.some(m => m.id === mensaje.id)) {
+            console.log('⚠️ Mensaje duplicado, ignorando');
+            return prev;
+          }
+
+          const nuevoMensaje = {
             id: mensaje.id,
             from: mensaje.de,
             text: mensaje.texto,
             at: mensaje.created_at,
-          },
-        ];
-      });
-      scrollToBottom();
-    } catch (e) {
-      console.log('Error manejando MensajeChatCreado', e);
-    }
-  };
+          };
 
-  channel.listen('MensajeChatCreado', onMensaje);
+          return [...prev, nuevoMensaje];
+        });
 
-  return () => {
-    try {
-      echo.leave('consultas');
-    } catch (e) {
-      console.log('Error al hacer leave del canal', e);
-    }
-  };
-}, [voluntario]);
+        scrollToBottom();
+      } catch (e) {
+        console.error('❌ Error manejando MensajeChatCreado:', e);
+      }
+    };
 
+    // 🔴 CRÍTICO: Agregar el punto antes del nombre del evento
+    channel.listen('.MensajeChatCreado', onMensaje);
 
-  // ------------------ render ------------------ //
+    // Debug: Verificar conexión
+    channel.subscribed(() => {
+      console.log('✅ Suscrito al canal consultas');
+    });
 
+    channel.error((error) => {
+      console.error('❌ Error en canal consultas:', error);
+    });
+
+    return () => {
+      try {
+        console.log('🔌 Desconectando del canal consultas');
+        echo.leaveChannel('consultas');
+      } catch (e) {
+        console.log('Error al hacer leave del canal', e);
+      }
+    };
+  }, [voluntario]);
+
+  // Render
   const renderItem = ({ item }) => {
     const esVol = item.from === 'voluntario';
 
@@ -296,7 +305,7 @@ useEffect(() => {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 10}
     >
       <View style={{ flex: 1, paddingTop: 40 }}>
-        {/* cabecera */}
+        {/* Cabecera */}
         <View
           style={{
             paddingHorizontal: 16,
@@ -325,7 +334,7 @@ useEffect(() => {
           </Text>
         </View>
 
-        {/* listado de mensajes */}
+        {/* Lista de mensajes */}
         <View style={{ flex: 1, paddingHorizontal: 16, marginTop: 8 }}>
           {loading && mensajes.length === 0 ? (
             <View
@@ -352,7 +361,7 @@ useEffect(() => {
           )}
         </View>
 
-        {/* input + botón abajo fijo */}
+        {/* Input */}
         <View
           style={{
             paddingHorizontal: 10,
