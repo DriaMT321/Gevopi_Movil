@@ -27,8 +27,8 @@ import { getUsuarios } from '../services/usuarioService';
 import { getVoluntarioByUsuarioId } from '../services/voluntarioService';
 import { getLoggedCi, logout } from '../services/authService';
 import { getVoluntarioByCi } from '../services/voluntarioService';
-import { crearSolicitudAyuda, crearHistorialUbicacion } from '../services/mutationsNOSQL';
 import { obtenerReportePorVoluntarioId, obtenerCursosPorVoluntarioId } from '../services/queriesSQL';
+import { crearSolicitudAyuda } from '../services/solicitudService';
 
 const { width } = Dimensions.get('window');
 const { height } = Dimensions.get('window');
@@ -154,10 +154,17 @@ export default function PerfilScreen() {
       setTipo('');
       setDescripcion('');
       setNivel('');
-    } catch (err) {
-      console.error('Error al enviar solicitud:', err);
+    } 
+    
+    catch (err) {
+      if (err.response) {
+        console.log('Error 422 data:', err.response.data);
+      } else {
+        console.log('Error al enviar solicitud:', err.message);
+      }
       alert('Error al enviar solicitud. Revisa consola.');
     }
+
   };
 
   useFocusEffect(
@@ -712,6 +719,8 @@ export default function PerfilScreen() {
 
             
           </Animated.View>
+
+          
         </Modal>
       </KeyboardAvoidingView>
     </Animated.View>

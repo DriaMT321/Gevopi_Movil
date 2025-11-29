@@ -13,7 +13,7 @@ import { useNavigation } from '@react-navigation/native';
 
 import { getLoggedCi } from '../services/authService';
 import { getVoluntarioByCi } from '../services/voluntarioService';
-import { obtenerTodasSolicitudes } from '../services/queriesNOSQL';
+import { obtenerTodasSolicitudes } from '../services/solicitudService';
 
 export default function SolicitudesScreen() {
   const navigation = useNavigation();
