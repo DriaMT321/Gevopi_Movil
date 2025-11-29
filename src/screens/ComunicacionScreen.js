@@ -1,3 +1,4 @@
+// src/screens/ComunicacionScreen.js
 import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
@@ -12,15 +13,18 @@ import {
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
+import styles from '../styles/cursosStyles';
+import { useNavigation } from '@react-navigation/native';
 import colors from '../themes/colors';
 import { getLoggedCi } from '../services/authService';
 import { getVoluntarioByCi } from '../services/voluntarioService';
 import api from '../services/api';
+import echo from '../services/echo'; // <-- nuevo
 
 const OFFLINE_KEY = 'consultas_pendientes';
 
 export default function ComunicacionScreen() {
+  const navigation = useNavigation();
   const [voluntario, setVoluntario] = useState(null);
   const [mensajes, setMensajes] = useState([]); // [{id, from, text, at}]
   const [mensaje, setMensaje] = useState('');
@@ -30,53 +34,47 @@ export default function ComunicacionScreen() {
   const pollRef = useRef(null);
   const listRef = useRef(null);
 
+  // helper para hacer scroll al final
+  const scrollToBottom = () => {
+    setTimeout(() => {
+      if (listRef.current) {
+        listRef.current.scrollToEnd({ animated: true });
+      }
+    }, 200);
+  };
+
   // ------------------ helpers backend ------------------ //
 
-  const cargarMensajes = async (silent = false) => {
-    if (!voluntario) return;
+const cargarMensajes = async (silent = false, voluntarioId = null) => {
+  const id = voluntarioId ?? voluntario?.id;
+  if (!id) return;
 
-    try {
-      if (!silent) setLoading(true);
+  try {
+    if (!silent) setLoading(true);
 
-      const resp = await api.get(
-        `/consultas?voluntario_id=${voluntario.id}`
-      );
+    const resp = await api.get(`/chat-mensajes?voluntario_id=${id}`);
+    const mensajesApi = resp.data.data || [];
 
-      const consultas = resp.data.data || [];
+    const items = mensajesApi.map((m) => ({
+      id: m.id,
+      from: m.de,            // 'voluntario' | 'admin'
+      text: m.texto,
+      at: m.created_at,
+    }));
 
-      // Aplanar: cada consulta es 1 (voluntario) + 0/1 (admin)
-      const items = [];
-      consultas.forEach((c) => {
-        items.push({
-          id: `v-${c.id}`,
-          from: 'voluntario',
-          text: c.mensaje,
-          at: c.created_at,
-        });
+    setMensajes(items);
+    scrollToBottom();
+  } catch (error) {
+    console.log('Error cargando mensajes', error);
+  } finally {
+    if (!silent) setLoading(false);
+  }
+};
 
-        if (c.respuesta_admin) {
-          items.push({
-            id: `a-${c.id}`,
-            from: 'admin',
-            text: c.respuesta_admin,
-            at: c.updated_at || c.created_at,
-          });
-        }
-      });
 
-      setMensajes(items);
-      // scroll al final
-      setTimeout(() => {
-        if (listRef.current) {
-          listRef.current.scrollToEnd({ animated: true });
-        }
-      }, 200);
-    } catch (error) {
-      console.log('Error cargando mensajes', error);
-    } finally {
-      if (!silent) setLoading(false);
-    }
-  };
+
+
+
 
   const guardarPendiente = async (payload) => {
     try {
@@ -103,7 +101,6 @@ export default function ComunicacionScreen() {
         try {
           await api.post('/consultas', item);
         } catch (e) {
-          // si falla, lo dejamos para después
           nuevos.push(item);
         }
       }
@@ -115,7 +112,6 @@ export default function ComunicacionScreen() {
       }
 
       if (arr.length !== nuevos.length) {
-        // se envió algo, recargar mensajes
         await cargarMensajes(true);
       }
     } catch (e) {
@@ -124,39 +120,41 @@ export default function ComunicacionScreen() {
   };
 
   const enviarConsulta = async () => {
-    const texto = mensaje.trim();
-    if (!texto) return;
+  const texto = mensaje.trim();
+  if (!texto) return;
 
-    if (!voluntario) {
-      Alert.alert('Error', 'No se encontró tu usuario');
-      return;
-    }
+  if (!voluntario) {
+    Alert.alert('Error', 'No se encontró tu usuario');
+    return;
+  }
 
-    const payload = {
-      voluntario_id: voluntario.id,
-      mensaje: texto,
-    };
-
-    setSending(true);
-
-    try {
-      // intento online
-      await api.post('/consultas', payload);
-
-      setMensaje('');
-      await cargarMensajes(true);
-    } catch (error) {
-      console.log('Error enviando consulta, guardando offline:', error);
-      await guardarPendiente(payload);
-      setMensaje('');
-      Alert.alert(
-        'Sin conexión',
-        'No se pudo enviar ahora. El mensaje se guardó y se enviará cuando tengas internet.'
-      );
-    } finally {
-      setSending(false);
-    }
+  const payload = {
+    voluntario_id: voluntario.id,
+    de: 'voluntario',
+    texto,
   };
+
+  setSending(true);
+
+  try {
+    await api.post('/chat-mensajes', payload);
+    setMensaje('');
+    // podemos depender del evento en tiempo real,
+    // pero por seguridad recargamos silenciosamente:
+    await cargarMensajes(true);
+  } catch (error) {
+    console.log('Error enviando consulta, guardando offline:', error);
+    await guardarPendiente(payload);
+    setMensaje('');
+    Alert.alert(
+      'Sin conexión',
+      'No se pudo enviar ahora. El mensaje se guardó y se enviará cuando tengas internet.'
+    );
+  } finally {
+    setSending(false);
+  }
+};
+
 
   // ------------------ useEffect inicial ------------------ //
 
@@ -177,18 +175,21 @@ export default function ComunicacionScreen() {
         setVoluntario(u);
 
         await procesarPendientes();
-        await cargarMensajes(false);
+        // 🔴 AQUÍ: pasamos el id explícito
+        await cargarMensajes(false, u.id);
 
-        // polling cada 5s para recibir respuestas del admin
+        /*
         pollRef.current = setInterval(() => {
           cargarMensajes(true);
-        }, 5000);
+        }, 15000);
+        */
       } catch (e) {
         console.log('Error init ComunicacionScreen', e);
       } finally {
         if (mounted) setLoading(false);
       }
     };
+
 
     init();
 
@@ -197,6 +198,49 @@ export default function ComunicacionScreen() {
       if (pollRef.current) clearInterval(pollRef.current);
     };
   }, []);
+
+  // ------------------ WebSockets con Reverb ------------------ //
+
+useEffect(() => {
+  if (!voluntario) return;
+
+  const channel = echo.channel('consultas');
+
+  const onMensaje = ({ mensaje }) => {
+    try {
+      if (!mensaje || mensaje.voluntario_id !== voluntario.id) return;
+
+      setMensajes((prev) => {
+        if (prev.some(m => m.id === mensaje.id)) {
+          return prev; // ya lo tenemos
+        }
+        return [
+          ...prev,
+          {
+            id: mensaje.id,
+            from: mensaje.de,
+            text: mensaje.texto,
+            at: mensaje.created_at,
+          },
+        ];
+      });
+      scrollToBottom();
+    } catch (e) {
+      console.log('Error manejando MensajeChatCreado', e);
+    }
+  };
+
+  channel.listen('MensajeChatCreado', onMensaje);
+
+  return () => {
+    try {
+      echo.leave('consultas');
+    } catch (e) {
+      console.log('Error al hacer leave del canal', e);
+    }
+  };
+}, [voluntario]);
+
 
   // ------------------ render ------------------ //
 
@@ -238,9 +282,7 @@ export default function ComunicacionScreen() {
               textAlign: 'right',
             }}
           >
-            {item.at
-              ? new Date(item.at).toLocaleString()
-              : ''}
+            {item.at ? new Date(item.at).toLocaleString() : ''}
           </Text>
         </View>
       </View>
@@ -250,8 +292,8 @@ export default function ComunicacionScreen() {
   return (
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: '#f5f5f5' }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 10}
     >
       <View style={{ flex: 1, paddingTop: 40 }}>
         {/* cabecera */}
@@ -259,13 +301,27 @@ export default function ComunicacionScreen() {
           style={{
             paddingHorizontal: 16,
             paddingBottom: 8,
+            flexDirection: 'row',
+            alignItems: 'center',
           }}
         >
-          <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#333' }}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}
+          >
+            <Ionicons name="arrow-back" size={24} color={colors.naranjaFuerte} />
+          </TouchableOpacity>
+          <Text
+            style={{
+              fontSize: 22,
+              fontWeight: 'bold',
+              color: colors.naranjaFuerte,
+              marginLeft: 8,
+              flex: 1,
+            }}
+            numberOfLines={2}
+          >
             Comunicación con el administrador
-          </Text>
-          <Text style={{ fontSize: 13, color: '#777', marginTop: 4 }}>
-            Envía tus dudas y revisa las respuestas del equipo.
           </Text>
         </View>
 
@@ -291,11 +347,7 @@ export default function ComunicacionScreen() {
               keyExtractor={(item) => item.id.toString()}
               renderItem={renderItem}
               contentContainerStyle={{ paddingVertical: 8 }}
-              onContentSizeChange={() => {
-                if (listRef.current) {
-                  listRef.current.scrollToEnd({ animated: true });
-                }
-              }}
+              onContentSizeChange={scrollToBottom}
             />
           )}
         </View>
@@ -303,7 +355,9 @@ export default function ComunicacionScreen() {
         {/* input + botón abajo fijo */}
         <View
           style={{
-            padding: 10,
+            paddingHorizontal: 10,
+            paddingTop: 8,
+            paddingBottom: Platform.OS === 'android' ? 40 : 10,
             borderTopWidth: 1,
             borderTopColor: '#ddd',
             backgroundColor: 'white',

@@ -588,12 +588,7 @@ export default function PerfilScreen() {
 
       </ScrollView>
 
-<TouchableOpacity
-              style={styles.circleButton}
-              onPress={() => navigation.navigate("Comunicacion")}
-            >
-              <Ionicons name="chatbox-ellipses-outline" size={24} color={colors.amarillo} />
-            </TouchableOpacity>
+            
       {/* Modal Información Voluntario */}
       <Modal transparent visible={infoVisible} animationType="fade">
         <Pressable style={styles.modalBackdrop} onPress={closeInfo} />
