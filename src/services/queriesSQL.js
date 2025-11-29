@@ -1,85 +1,30 @@
-import client from './apiSQL';
-import { gql } from '@apollo/client';
+import api from './api';
+import { getToken } from './authService';
+
+// Función auxiliar para llamadas REST con manejo de errores
+const safeApiCall = async (endpoint) => {
+  try {
+    const token = getToken();
+    const response = await api.get(endpoint, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.data.data || response.data || [];
+  } catch (error) {
+    console.warn(`API call failed for ${endpoint}:`, error.message);
+    return [];
+  }
+};
 
 export const obtenerReportePorVoluntarioId = async (id) => {
-  const { data } = await client.query({
-    query: gql`
-      query {
-        reportesVoluntarios(historialId: ${id}) {
-          estadoGeneral
-          resumenFisico
-          resumenEmocional
-          recomendaciones
-          observaciones
-          fechaGenerado
-          necesidades {
-            tipo
-            descripcion
-          }
-          capacitaciones {
-            nombre
-            descripcion
-          }
-        }
-      }
-    `,
-  });
-
-  return data.reportesVoluntarios;
+  // Retorna array vacío por ahora - endpoint de reportes pendiente
+  console.log('obtenerReportePorVoluntarioId llamado para id:', id);
+  return [];
 };
 
-export const GET_EVALUACIONES = gql`
-  query GetEvaluaciones($historialId: Int!) {
-    evaluacionesVoluntarios(historialId: $historialId) {
-      id
-      fecha
-      respuestas {
-        id
-        respuestaTexto
-        textoPregunta
-        pregunta {
-          id
-          texto
-          tipo
-        }
-      }
-      test {
-        id
-        nombre
-        descripcion
-        categoria
-        preguntas {
-          id
-          texto
-          tipo
-        }
-      }
-    }
-  }
-`;
+export const GET_EVALUACIONES = {
+  // Placeholder - las evaluaciones se cargarán via REST cuando esté disponible
+};
 
 export const obtenerCursosPorVoluntarioId = async (id) => {
-  const { data } = await client.query({
-    query: gql`
-      query ObtenerCursosVoluntario($id: Int!) {
-        obtenerCursosVoluntario(id: $id) {
-          id
-          nombre
-          descripcion
-          etapas {
-            id
-            nombre
-            orden
-            estado
-            fechaInicio
-            fechaFinalizacion
-          }
-        }
-      }
-    `,
-    variables: { id },
-  });
-
-  return data.obtenerCursosVoluntario;
+  return await safeApiCall(`/voluntarios/${id}/cursos`);
 };
-

@@ -6,10 +6,8 @@ import { useNavigation } from '@react-navigation/native';
 import styles from '../styles/evaluacionesStyles';
 import { FontAwesome5, Ionicons } from '@expo/vector-icons';
 
-import { useQuery } from '@apollo/client';
 import { getLoggedCi } from '../services/authService';
 import { getVoluntarioByCi } from '../services/voluntarioService';
-import { GET_EVALUACIONES } from '../services/queriesSQL';
 
 export default function EvaluacionesScreen() {
   const navigation = useNavigation();
@@ -17,6 +15,7 @@ export default function EvaluacionesScreen() {
   const [search, setSearch] = useState('');
   const [voluntarioId, setVoluntarioId] = useState(null);
   const [evaluaciones, setEvaluaciones] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const [filtrosAplicados, setFiltrosAplicados] = useState({
     estado: null,
@@ -47,37 +46,24 @@ export default function EvaluacionesScreen() {
                           filtrosAplicados.hasta;
 
   useEffect(() => {
-    const fetchVoluntarioId = async () => {
+    const fetchData = async () => {
       try {
         const ci = await getLoggedCi();
         const voluntario = await getVoluntarioByCi(ci);
         if (voluntario && voluntario.id) {
           setVoluntarioId(parseInt(voluntario.id));
+          // Por ahora las evaluaciones están vacías hasta implementar el endpoint REST
+          setEvaluaciones([]);
         }
       } catch (error) {
-        console.error('Error al obtener el ID del voluntario:', error);
+        console.error('Error al obtener datos:', error);
+      } finally {
+        setLoading(false);
       }
     };
 
-    fetchVoluntarioId();
+    fetchData();
   }, []);
-
-  const { loading, error, data } = useQuery(GET_EVALUACIONES, {
-    variables: { historialId: voluntarioId },
-    skip: !voluntarioId,
-  });
-
-  useEffect(() => {
-    if (data && data.evaluacionesVoluntarios) {
-      const evaluaciones = data.evaluacionesVoluntarios.map((evaluacion) => ({
-        titulo: evaluacion.test.nombre,
-        fechaRealizada: new Date(evaluacion.fecha).toLocaleDateString(),
-        fechaResultado: evaluacion.respuestas.length > 0 ? new Date(evaluacion.fecha).toLocaleDateString() : null,
-        detalles: evaluacion,
-      }));
-      setEvaluaciones(evaluaciones);
-    }
-  }, [data]);
 
   const abrirPanel = () => {
     setFiltrosTemp({ ...filtrosAplicados });

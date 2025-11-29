@@ -9,6 +9,7 @@ export const crearSolicitudAyuda = async ({
   latitud,
   longitud,
 }) => {
+  try {
     const query = `
     mutation {
       crearSolicitudAyuda(
@@ -35,16 +36,21 @@ export const crearSolicitudAyuda = async ({
     }
   `;
 
-  const response = await graphqlApi.post('', { query });
+    const response = await graphqlApi.post('', { query });
 
-  if (response.data.errors) {
-    throw new Error(response.data.errors[0].message);
+    if (response.data.errors) {
+      throw new Error(response.data.errors[0].message);
+    }
+
+    return response.data.data.crearSolicitudAyuda;
+  } catch (error) {
+    console.warn('Error creando solicitud (servidor GraphQL no disponible):', error.message);
+    throw new Error('Servidor de emergencias no disponible. Intente más tarde.');
   }
-
-  return response.data.data.crearSolicitudAyuda;
 };
 
 export const actualizarSolicitudEnProgreso = async (id, ciArray) => {
+  try {
     const query = `
       mutation {
         actualizarSolicitudEnProgreso(id: "${id}", nuevosCIs: ${JSON.stringify(ciArray)}) {
@@ -60,10 +66,15 @@ export const actualizarSolicitudEnProgreso = async (id, ciArray) => {
       throw new Error(response.data.errors[0].message);
     }
     return response.data.data.actualizarSolicitudEnProgreso;
-  };
+  } catch (error) {
+    console.warn('Error actualizando solicitud:', error.message);
+    return null;
+  }
+};
   
   
-  export const marcarSolicitudRespondida = async (id) => {
+export const marcarSolicitudRespondida = async (id) => {
+  try {
     const query = `
       mutation {
         marcarSolicitudRespondida(id: "${id}") {
@@ -78,9 +89,14 @@ export const actualizarSolicitudEnProgreso = async (id, ciArray) => {
       throw new Error(response.data.errors[0].message);
     }
     return response.data.data.marcarSolicitudRespondida;
-  };
+  } catch (error) {
+    console.warn('Error marcando solicitud:', error.message);
+    return null;
+  }
+};
 
-  export const crearHistorialUbicacion = async (lat, lon, voluntarioId) => {
+export const crearHistorialUbicacion = async (lat, lon, voluntarioId) => {
+  try {
     const query = `
       mutation(
         $voluntarioId: ID!
@@ -107,22 +123,15 @@ export const actualizarSolicitudEnProgreso = async (id, ciArray) => {
       lon: parseFloat(lon),
     };
   
-    try {
-      const response = await graphqlApi.post('', { query, variables });
-      
-      // Verificar si hay errores en la respuesta GraphQL
-      if (response.data.errors) {
-        throw new Error(response.data.errors[0].message);
-      }
-      
-      // Si no hay errores, devolver los datos
-      return response.data.data.crearHistorialUbicacion;
-    } catch (err) {
-      console.error('Error en crearHistorialUbicacion:', {
-        error: err.message,
-        variables,
-        stack: err.stack,
-      });
-      throw err;
+    const response = await graphqlApi.post('', { query, variables });
+    
+    if (response.data.errors) {
+      throw new Error(response.data.errors[0].message);
     }
-  };
+    
+    return response.data.data.crearHistorialUbicacion;
+  } catch (err) {
+    console.warn('Error en crearHistorialUbicacion (servidor no disponible):', err.message);
+    return null; // Retorna null si falla, no bloquea la app
+  }
+};

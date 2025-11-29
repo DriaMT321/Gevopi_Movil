@@ -5,10 +5,9 @@
   import styles from '../styles/cursosStyles';
   import { FontAwesome5, Ionicons } from '@expo/vector-icons';
 
-  import { useQuery } from '@apollo/client';
   import { getLoggedCi } from '../services/authService';
   import { getVoluntarioByCi } from '../services/voluntarioService';
-  import { obtenerCursosPorVoluntarioId } from '../services/queriesSQL';
+  import { getCursosByVoluntario } from '../services/cursosService';
 
   export default function CursosScreen() {
     const navigation = useNavigation();
@@ -32,7 +31,7 @@
 
     const hayFiltrosActivos = filtrosAplicados.estado !== null;
 
-    // Placeholder for fetching courses
+    // Fetch courses from REST API
     useEffect(() => {
       const fetchCursos = async () => {
         try {
@@ -40,11 +39,11 @@
           const voluntario = await getVoluntarioByCi(ci);
           if (!voluntario?.id) return;
 
-          const cursos = await obtenerCursosPorVoluntarioId(voluntario.id);
+          const cursos = await getCursosByVoluntario(voluntario.id);
 
           const cursosAdaptados = cursos.map((curso) => {
-            const totalEtapas = curso.etapas.length;
-            const completadas = curso.etapas.filter(e => e.estado === 'Completado').length;
+            const totalEtapas = curso.etapas?.length || 0;
+            const completadas = curso.etapas?.filter(e => e.estado === 'completado').length || 0;
 
             const progreso = totalEtapas > 0 ? Math.round((completadas / totalEtapas) * 100) : 0;
             let estado = 'Sin empezar';
@@ -56,16 +55,16 @@
               titulo: curso.nombre,
               estado,
               progreso,
-              fechaInicio: curso.etapas[0]?.fechaInicio ?? '',
-              fechaFin: curso.etapas[curso.etapas.length - 1]?.fechaFinalizacion ?? '',
-              etapas: curso.etapas.map(et => ({
+              fechaInicio: curso.etapas?.[0]?.fechaInicio ?? '',
+              fechaFin: curso.etapas?.[curso.etapas.length - 1]?.fechaFinalizacion ?? '',
+              etapas: curso.etapas?.map(et => ({
                 id: et.id,
                 nombre: et.nombre,
                 orden: et.orden,
                 estado: et.estado,
                 fechaInicio: et.fechaInicio,
                 fechaFinalizacion: et.fechaFinalizacion,
-              })),
+              })) || [],
             };
           });
 
