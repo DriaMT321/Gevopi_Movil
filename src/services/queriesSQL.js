@@ -16,9 +16,16 @@ const safeApiCall = async (endpoint) => {
 };
 
 export const obtenerReportePorVoluntarioId = async (id) => {
-  // Retorna array vacío por ahora - endpoint de reportes pendiente
-  console.log('obtenerReportePorVoluntarioId llamado para id:', id);
-  return [];
+  try {
+    const token = getToken();
+    const response = await api.get(`/voluntarios/${id}/reportes`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.data.data || [];
+  } catch (error) {
+    console.warn('Error obteniendo reportes:', error.message);
+    return [];
+  }
 };
 
 export const GET_EVALUACIONES = {
