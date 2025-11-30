@@ -1,27 +1,26 @@
-// services/solicitudService.js
 import api from './api';
 
 // GET /api/solicitudes-ayuda
 export const obtenerTodasSolicitudes = async () => {
   try {
     const response = await api.get('/solicitudes-ayuda');
-    const data = response.data.data || response.data || [];
+    const data = response.data || [];
 
     return data.map((s) => ({
       id: s.id,
       descripcion: s.descripcion,
       fecha: s.fecha,
-      latitud: s.latitud,
-      longitud: s.longitud,
-      nivelEmergencia: s.nivelEmergencia || s.nivel_emergencia,
-      tipo: s.tipoEmergencia || s.tipo_emergencia || s.tipo,
-      voluntarioId: s.voluntarioId?.toString() || s.voluntario_id?.toString(),
+      latitud: parseFloat(s.latitud),
+      longitud: parseFloat(s.longitud),
+      nivelEmergencia: s.nivelEmergencia,
+      tipo: s.tipoEmergencia,
+      voluntarioId: s.voluntarioId?.toString(),
+      voluntario: s.voluntario || 'Desconocido',
       estado: s.estado,
-      ciVoluntariosAcudir: s.ciVoluntariosAcudir,
-      fechaRespondida: s.fechaRespondida,
+      // ❌ QUITAR: direccion: s.direccion,
     }));
   } catch (error) {
-    console.warn('Error obteniendo solicitudes:', error.message);
+    console.error('Error obteniendo solicitudes:', error.response?.data || error.message);
     return [];
   }
 };
@@ -36,18 +35,34 @@ export const crearSolicitudAyuda = async (payload) => {
       voluntarioId,
       latitud,
       longitud,
-      direccion = null,
+      // ❌ QUITAR: direccion = null,
     } = payload;
 
-    const response = await api.post('/solicitudes-ayuda', {
+    // ✅ MAPEAR NIVEL NUMÉRICO A TEXTO EN MAYÚSCULAS
+    const mapNivelEmergencia = (nivel) => {
+      const nivelNum = parseInt(nivel);
+      if (nivelNum <= 2) return 'BAJO';
+      if (nivelNum <= 3) return 'MEDIO';
+      return 'ALTO';
+    };
+
+    const nivelTexto = mapNivelEmergencia(nivelEmergencia);
+
+    const payloadToSend = {
       tipo_emergencia: tipo,
       descripcion,
-      nivel_emergencia: nivelEmergencia,
-      voluntario_id: voluntarioId,
-      latitud,
-      longitud,
-      direccion,
-    });
+      nivel_emergencia: nivelTexto,
+      voluntario_id: parseInt(voluntarioId),
+      latitud: parseFloat(latitud),
+      longitud: parseFloat(longitud),
+      // ❌ QUITAR: direccion,
+    };
+
+    console.log('📤 Payload enviado:', payloadToSend);
+
+    const response = await api.post('/solicitudes-ayuda', payloadToSend);
+
+    console.log('✅ Respuesta del servidor:', response.data);
 
     const s = response.data.data || response.data;
 
@@ -55,17 +70,33 @@ export const crearSolicitudAyuda = async (payload) => {
       id: s.id,
       descripcion: s.descripcion,
       fecha: s.created_at,
-      latitud: s.latitud,
-      longitud: s.longitud,
+      latitud: parseFloat(s.latitud),
+      longitud: parseFloat(s.longitud),
       nivelEmergencia: s.nivel_emergencia,
       tipo: s.tipo,
       voluntarioId: s.voluntario_id?.toString(),
       estado: s.estado,
-      ciVoluntariosAcudir: s.ci_voluntarios_acudir,
-      fechaRespondida: s.fecha_respondida,
+      // ❌ QUITAR: direccion: s.direccion,
     };
   } catch (error) {
-    console.warn('Error creando solicitud de ayuda:', error.message);
-    return null;
+    console.error('❌ Error completo:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+    });
+    throw error;
+  }
+};
+
+// Actualizar estado de una solicitud
+export const actualizarEstadoSolicitud = async (id, nuevoEstado) => {
+  try {
+    const response = await api.patch(`/solicitudes-ayuda/${id}/estado`, {
+      estado: nuevoEstado,
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error actualizando estado:', error.response?.data || error.message);
+    throw error;
   }
 };

@@ -103,69 +103,138 @@ export default function PerfilScreen() {
 
   const [tipo, setTipo] = useState('');
   const [descripcion, setDescripcion] = useState('');
-  const [nivel, setNivel] = useState('');
 
-  const handleEnviarSolicitud = async () => {
-    if (!tipo || !descripcion || !nivel) {
-      alert('Por favor completa todos los campos');
+  const [nivel, setNivel] = useState('');
+  // ✅ AGREGAR ESTOS NUEVOS ESTADOS:
+  const [errors, setErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // ✅ FUNCIÓN DE VALIDACIÓN
+const validateForm = () => {
+  const newErrors = {};
+
+  if (!tipo) {
+    newErrors.tipo = 'Selecciona un tipo de emergencia';
+  }
+
+  if (!nivel) {
+    newErrors.nivel = 'Selecciona un nivel de emergencia';
+  }
+
+  if (!descripcion || descripcion.trim().length < 10) {
+    newErrors.descripcion = 'La descripción debe tener al menos 10 caracteres';
+  }
+
+  setErrors(newErrors);
+  return Object.keys(newErrors).length === 0;
+};
+
+// ✅ FUNCIÓN MEJORADA PARA ENVIAR SOLICITUD
+// ✅ FUNCIÓN MEJORADA PARA ENVIAR SOLICITUD
+const handleEnviarSolicitud = async () => {
+  if (!validateForm()) {
+    Alert.alert('Error', 'Por favor completa todos los campos correctamente');
+    return;
+  }
+
+  if (isSubmitting) {
+    console.log('⏳ Ya se está enviando...');
+    return;
+  }
+
+  setIsSubmitting(true);
+
+  try {
+    // 1. Permiso de ubicación
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Error', 'Permiso de ubicación denegado');
       return;
     }
 
-    try {
-      // 1. Permiso y ubicación
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        alert('Permiso de ubicación denegado');
-        return;
-      }
+    // 2. Obtener ubicación actual
+    const location = await Location.getCurrentPositionAsync({
+      accuracy: Location.Accuracy.High,
+    });
+    const latitud = location.coords.latitude;
+    const longitud = location.coords.longitude;
 
-      const location = await Location.getCurrentPositionAsync({});
-      const latitud = location.coords.latitude;
-      const longitud = location.coords.longitude;
+    // ❌ QUITAR TODO EL BLOQUE DE GEOCODING (líneas 118-131)
+    // 3. Obtener dirección legible
+    // let direccion = 'Ubicación reportada';
+    // try {
+    //   const geocode = await Location.reverseGeocodeAsync({
+    //     latitude: latitud,
+    //     longitude: longitud,
+    //   });
+    //   ...
+    // }
 
-      // 2. Fecha actual ISO
-      const fecha = new Date().toISOString();
+    // 4. Fecha actual
+    const fecha = new Date().toISOString();
 
-      // 3. Convertir nivel a ENUM
-      const nivelNum = parseInt(nivel);
-      const nivelEnum =
-        nivelNum <= 2 ? 'BAJO' : nivelNum <= 3 ? 'MEDIO' : 'ALTO';
+    // 5. Convertir nivel a número
+    const nivelNum = parseInt(nivel);
 
-      // 4. Verificar ID
-      if (!voluntario || !voluntario.id) {
-        alert('No se pudo obtener ID del voluntario');
-        return;
-      }
-
-      // 5. Enviar a backend usando función modular
-      await crearSolicitudAyuda({
-        tipo,
-        descripcion,
-        nivelEmergencia: nivelEnum,
-        fecha,
-        voluntarioId: voluntario.id.toString(),
-        latitud,
-        longitud,
-      });
-
-      // 6. Reset y feedback
-      alert('Solicitud de ayuda enviada correctamente');
-      setEmergenciaVisible(false);
-      setTipo('');
-      setDescripcion('');
-      setNivel('');
-    } 
-    
-    catch (err) {
-      if (err.response) {
-        console.log('Error 422 data:', err.response.data);
-      } else {
-        console.log('Error al enviar solicitud:', err.message);
-      }
-      alert('Error al enviar solicitud. Revisa consola.');
+    // 6. Verificar voluntario
+    if (!voluntario || !voluntario.id) {
+      throw new Error('No se pudo obtener ID del voluntario');
     }
 
-  };
+    console.log('📤 Enviando solicitud:', {
+      tipo,
+      nivelEmergencia: nivelNum,
+      descripcion: descripcion.trim(),
+      voluntarioId: voluntario.id,
+      latitud,
+      longitud,
+      // ❌ QUITAR: direccion,
+    });
+
+    // 7. Enviar a backend
+    await crearSolicitudAyuda({
+      tipo,
+      descripcion: descripcion.trim(),
+      nivelEmergencia: nivelNum,
+      fecha,
+      voluntarioId: voluntario.id.toString(),
+      latitud,
+      longitud,
+      // ❌ QUITAR: direccion,
+    });
+
+    console.log('✅ Solicitud enviada exitosamente');
+
+    // 8. Limpiar formulario
+    setTipo('');
+    setNivel('');
+    setDescripcion('');
+    setErrors({});
+
+    // 9. Cerrar modal
+    closeEmergencia();
+
+    // 10. Mostrar confirmación
+    Alert.alert(
+      '✅ Emergencia reportada',
+      'Tu solicitud ha sido enviada. Un equipo la revisará pronto.',
+      [{ text: 'OK' }]
+    );
+
+  } catch (err) {
+    console.error('❌ Error completo:', err);
+    
+    const errorMsg = err.response?.data?.message 
+      || err.message 
+      || 'No se pudo enviar la solicitud';
+
+    Alert.alert('Error', errorMsg);
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+
+
 
   useFocusEffect(
     React.useCallback(() => {
@@ -318,9 +387,16 @@ export default function PerfilScreen() {
   };
 
   const closeEmergencia = () => {
-    Animated.timing(panelAnim, { toValue: 1000, duration: 300, useNativeDriver: true }).start(() =>
-      setEmergenciaVisible(false)
-    );
+    setTipo('');
+    setNivel('');
+    setDescripcion('');
+    setErrors({});
+    
+    Animated.timing(panelAnim, { 
+      toValue: 1000, 
+      duration: 300, 
+      useNativeDriver: true 
+    }).start(() => setEmergenciaVisible(false));
   };
 
   const closeInfo = () => {
@@ -625,6 +701,8 @@ export default function PerfilScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
+
+
         <Modal transparent visible={emergenciaVisible} animationType="fade">
           <Pressable style={styles.modalBackdrop} onPress={closeEmergencia} />
 
@@ -639,7 +717,13 @@ export default function PerfilScreen() {
               }
             ]}
           >
-            <Text style={styles.modalTitle}>Reportar Emergencia</Text>
+            {/* ✅ Header con botón de cerrar */}
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Reportar Emergencia</Text>
+              <TouchableOpacity onPress={closeEmergencia} style={styles.closeButton}>
+                <Text style={styles.closeButtonText}>✕</Text>
+              </TouchableOpacity>
+            </View>
 
             <ScrollView
               contentContainerStyle={styles.modalScrollContent}
@@ -649,9 +733,11 @@ export default function PerfilScreen() {
               
               {/* Tipo de emergencia */}
               <View style={styles.modalSection}>
-                <Text style={styles.modalLabel}>Tipo de emergencia</Text>
+                <Text style={styles.modalLabel}>
+                  Tipo de emergencia <Text style={styles.required}>*</Text>
+                </Text>
                 <Dropdown
-                  style={styles.dropdown}
+                  style={[styles.dropdown, errors.tipo && styles.inputError]}
                   placeholderStyle={styles.placeholderStyle}
                   selectedTextStyle={styles.selectedTextStyle}
                   data={[
@@ -664,15 +750,21 @@ export default function PerfilScreen() {
                   valueField="value"
                   placeholder="Selecciona un tipo"
                   value={tipo}
-                  onChange={item => setTipo(item.value)}
+                  onChange={item => {
+                    setTipo(item.value);
+                    setErrors(prev => ({ ...prev, tipo: null }));
+                  }}
                 />
+                {errors.tipo && <Text style={styles.errorText}>{errors.tipo}</Text>}
               </View>
 
               {/* Nivel de emergencia */}
               <View style={styles.modalSection}>
-                <Text style={styles.modalLabel}>Nivel de emergencia</Text>
+                <Text style={styles.modalLabel}>
+                  Nivel de emergencia <Text style={styles.required}>*</Text>
+                </Text>
                 <Dropdown
-                  style={styles.dropdown}
+                  style={[styles.dropdown, errors.nivel && styles.inputError]}
                   placeholderStyle={styles.placeholderStyle}
                   selectedTextStyle={styles.selectedTextStyle}
                   data={[
@@ -685,44 +777,72 @@ export default function PerfilScreen() {
                   valueField="value"
                   placeholder="Selecciona un nivel"
                   value={nivel}
-                  onChange={item => setNivel(item.value)}
+                  onChange={item => {
+                    setNivel(item.value);
+                    setErrors(prev => ({ ...prev, nivel: null }));
+                  }}
                 />
+                {errors.nivel && <Text style={styles.errorText}>{errors.nivel}</Text>}
               </View>
 
               {/* Descripción */}
               <View style={styles.modalSection}>
-                <Text style={styles.modalLabel}>Descripción</Text>
+                <Text style={styles.modalLabel}>
+                  Descripción <Text style={styles.required}>*</Text>
+                </Text>
                 <TextInput
-                  placeholder="Describe brevemente la emergencia..."
-                  style={[styles.input, styles.descripcionInput]}
+                  placeholder="Describe brevemente la emergencia (mínimo 10 caracteres)..."
+                  style={[
+                    styles.input, 
+                    styles.descripcionInput,
+                    errors.descripcion && styles.inputError
+                  ]}
                   value={descripcion}
-                  onChangeText={setDescripcion}
-                  multiline={false}
+                  onChangeText={(text) => {
+                    setDescripcion(text);
+                    setErrors(prev => ({ ...prev, descripcion: null }));
+                  }}
+                  multiline={true}
+                  numberOfLines={4}
+                  maxLength={500}
                   returnKeyType="done"
                   blurOnSubmit={true}
-                  onSubmitEditing={() => {
-                    Keyboard.dismiss();
-                  }}
+                  textAlignVertical="top"
                 />
+                <Text style={styles.charCounter}>{descripcion.length}/500</Text>
+                {errors.descripcion && <Text style={styles.errorText}>{errors.descripcion}</Text>}
               </View>
 
-              {/* Botón */}
+              {/* Botón de enviar */}
               <TouchableOpacity
-                style={styles.enviarButton}
+                style={[
+                  styles.enviarButton,
+                  isSubmitting && styles.enviarButtonDisabled
+                ]}
                 onPress={handleEnviarSolicitud}
+                disabled={isSubmitting}
               >
-                <Text style={styles.enviarButtonText}>ENVIAR</Text>
+                {isSubmitting ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.enviarButtonText}>ENVIAR EMERGENCIA</Text>
+                )}
               </TouchableOpacity>
 
+              {/* Botón de cancelar */}
+              <TouchableOpacity
+                style={styles.cancelarButton}
+                onPress={closeEmergencia}
+              >
+                <Text style={styles.cancelarButtonText}>Cancelar</Text>
+              </TouchableOpacity>
               
             </ScrollView>
-
-            
           </Animated.View>
-
-          
         </Modal>
       </KeyboardAvoidingView>
     </Animated.View>
   );
 }
+
+

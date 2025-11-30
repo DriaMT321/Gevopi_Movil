@@ -54,11 +54,17 @@ export default function SolicitudesScreen() {
 
   useEffect(() => {
     const filtrados = solicitudes.filter(s => {
-      const coincideTipo = !filtros.tipo || s.tipo === filtros.tipo;
-      const coincideNivel = !filtros.nivel || s.nivelEmergencia === filtros.nivel;
-      const coincideEstado = !filtros.estado || s.estado === filtros.estado;
-      const coincideFecha = !filtros.fecha || new Date(s.fecha).toDateString() === new Date(filtros.fecha).toDateString();
-      const coincideBusqueda = s.descripcion.toLowerCase().includes(search.toLowerCase());
+      const coincideTipo = !filtros.tipo || s.tipo?.toLowerCase() === filtros.tipo?.toLowerCase();
+      const coincideNivel = !filtros.nivel || s.nivelEmergencia?.toLowerCase() === filtros.nivel?.toLowerCase();
+      const coincideEstado = !filtros.estado || s.estado?.toLowerCase() === filtros.estado?.toLowerCase();
+      
+      // ✅ Comparar solo día/mes/año (ignorar hora)
+      const coincideFecha = !filtros.fecha || 
+        new Date(s.fecha).toLocaleDateString() === new Date(filtros.fecha).toLocaleDateString();
+      
+      const coincideBusqueda = !search || 
+        s.descripcion?.toLowerCase().includes(search.toLowerCase());
+      
       return coincideTipo && coincideNivel && coincideEstado && coincideFecha && coincideBusqueda;
     });
     setFiltered(filtrados);
@@ -96,11 +102,11 @@ export default function SolicitudesScreen() {
   }
 
   const getNivelColor = (nivel) => {
-    switch (nivel?.toUpperCase()) {
-      case 'ALTO': return '#D32F2F';   // Rojo
-      case 'MEDIO': return '#FBC02D';  // Amarillo
-      case 'BAJO': return '#388E3C';   // Verde
-      default: return '#9E9E9E';       // Gris por defecto
+    switch (nivel?.toLowerCase()) {
+      case 'alta': return '#D32F2F';   // Rojo
+      case 'media': return '#FBC02D';  // Amarillo
+      case 'baja': return '#388E3C';   // Verde
+      default: return '#9E9E9E';
     }
   };
 
@@ -209,10 +215,16 @@ export default function SolicitudesScreen() {
           <Animated.View style={[styles.modalContent, { transform: [{ translateY: panelAnim }] }]}>
             <Text style={styles.modalTitle}>Filtros</Text>
 
+            {/* ✅ TIPO ACTUALIZADO */}
             <Text style={styles.filterLabel}>Tipo</Text>
             <Dropdown
               style={styles.input}
-              data={[{ label: 'Fisica', value: 'Fisica' }, { label: 'Psicologica', value: 'Psicologica' }]}
+              data={[
+                { label: 'Médica', value: 'medica' },
+                { label: 'Física', value: 'fisica' },
+                { label: 'Emocional', value: 'emocional' },
+                { label: 'Recursos', value: 'recursos' }
+              ]}
               labelField="label"
               valueField="value"
               value={tempFiltros.tipo}
@@ -220,10 +232,15 @@ export default function SolicitudesScreen() {
               onChange={item => setTempFiltros(prev => ({ ...prev, tipo: item.value }))}
             />
 
+            {/* ✅ NIVEL ACTUALIZADO */}
             <Text style={styles.filterLabel}>Nivel</Text>
             <Dropdown
               style={styles.input}
-              data={[{ label: 'BAJO', value: 'BAJO' }, { label: 'MEDIO', value: 'MEDIO' }, { label: 'ALTO', value: 'ALTO' }]}
+              data={[
+                { label: 'Baja', value: 'baja' },
+                { label: 'Media', value: 'media' },
+                { label: 'Alta', value: 'alta' }
+              ]}
               labelField="label"
               valueField="value"
               value={tempFiltros.nivel}
@@ -231,10 +248,16 @@ export default function SolicitudesScreen() {
               onChange={item => setTempFiltros(prev => ({ ...prev, nivel: item.value }))}
             />
 
+            {/* ✅ ESTADO ACTUALIZADO */}
             <Text style={styles.filterLabel}>Estado</Text>
             <Dropdown
               style={styles.input}
-              data={[{ label: 'Sin responder', value: 'Sin responder' }, { label: 'En progreso', value: 'En progreso' }, { label: 'Respondido', value: 'Respondido' }]}
+              data={[
+                { label: 'Sin responder', value: 'sin responder' },
+                { label: 'En progreso', value: 'en progreso' },
+                { label: 'Respondido', value: 'respondido' },
+                { label: 'Resuelto', value: 'resuelto' }
+              ]}
               labelField="label"
               valueField="value"
               value={tempFiltros.estado}

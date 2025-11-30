@@ -27,22 +27,23 @@ export default function DetalleSolicitudScreen() {
     const compartirConWhatsApp = () => {
         const { latitud, longitud, descripcion, fecha, tipo, nivelEmergencia } = solicitud;
 
-        const mensaje = `*Emergencia* 
-            📄 *Descripción:* ${descripcion}
-            📅 *Fecha:* ${new Date(fecha).toLocaleString()}
-            📌 *Tipo:* ${tipo}
-            ⚠️ *Nivel de Emergencia:* ${nivelEmergencia}
+        const mensaje = `🚨 *EMERGENCIA GEVOPI*
 
-            🗺️ *Ubicación:* https://www.google.com/maps/search/?api=1&query=${latitud},${longitud}
+        📄 *Descripción:* ${descripcion}
+        📅 *Fecha:* ${new Date(fecha).toLocaleString('es-BO')}
+        📌 *Tipo:* ${tipo}
+        ⚠️ *Nivel:* ${nivelEmergencia}
 
-            📲 *Enviado desde la App de Emergencias*
-            `;
+        🗺️ *Ubicación:*
+        https://www.google.com/maps/search/?api=1&query=${latitud},${longitud}
 
-        const url = `whatsapp://send?text=${encodeURIComponent(mensaje)}`;
+        Compartido desde App GEVOPI`;
 
-        Linking.openURL(url).catch(() => {
-            alert('No se pudo abrir WhatsApp. ¿Está instalado?');
-        });
+            const url = `whatsapp://send?text=${encodeURIComponent(mensaje)}`;
+
+            Linking.openURL(url).catch(() => {
+                alert('No se pudo abrir WhatsApp. ¿Está instalado?');
+            });
     };
 
     return (

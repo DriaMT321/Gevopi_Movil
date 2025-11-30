@@ -455,4 +455,68 @@ export default StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
+
+  // ...existing styles...
+
+modalHeader: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  marginBottom: 20,
+},
+
+closeButton: {
+  padding: 5,
+},
+
+closeButtonText: {
+  fontSize: 24,
+  color: '#666',
+  fontWeight: 'bold',
+},
+
+required: {
+  color: '#e74c3c',
+  fontSize: 16,
+},
+
+inputError: {
+  borderColor: '#e74c3c',
+  borderWidth: 1,
+},
+
+errorText: {
+  color: '#e74c3c',
+  fontSize: 12,
+  marginTop: 5,
+},
+
+charCounter: {
+  fontSize: 12,
+  color: '#999',
+  textAlign: 'right',
+  marginTop: 5,
+},
+
+enviarButtonDisabled: {
+  backgroundColor: '#95a5a6',
+  opacity: 0.6,
+},
+
+cancelarButton: {
+  backgroundColor: 'transparent',
+  borderWidth: 1,
+  borderColor: '#e74c3c',
+  borderRadius: 8,
+  paddingVertical: 12,
+  marginTop: 10,
+  alignItems: 'center',
+},
+
+cancelarButtonText: {
+  color: '#e74c3c',
+  fontSize: 16,
+  fontWeight: 'bold',
+},
 });
+
