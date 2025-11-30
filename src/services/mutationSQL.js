@@ -1,20 +1,17 @@
-import client from './apiSQL';
-import { gql } from '@apollo/client';
-
-const CAMBIAR_ESTADO_ETAPA = gql`
-    mutation CambiarEstadoEtapa($id: ID!) {
-        cambiarEstadoEtapa(id: $id)
-    }
-`;
+import api from './api';
+import { getToken } from './authService';
 
 export const cambiarEstadoEtapa = async (id) => {
     try {
-        const { data } = await client.mutate({
-            mutation: CAMBIAR_ESTADO_ETAPA,
-            variables: { id },
+        const token = getToken();
+        const response = await api.patch(`/progreso/${id}/estado`, {}, {
+            headers: { Authorization: `Bearer ${token}` },
         });
 
-        return data.cambiarEstadoEtapa;
+        if (response.data.success) {
+            return response.data.data;
+        }
+        throw new Error(response.data.message || 'Error al cambiar estado');
     } catch (error) {
         console.error('Error al cambiar estado de etapa:', error);
         throw error;
