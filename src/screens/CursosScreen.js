@@ -1,7 +1,7 @@
-  import React, { useEffect, useState, useRef } from 'react';
+  import React, { useEffect, useState, useRef, useCallback } from 'react';
   import { View, Text, TextInput, TouchableOpacity, FlatList, Animated, Pressable, Modal, Platform } from 'react-native';
   import colors from '../themes/colors';
-  import { useNavigation } from '@react-navigation/native';
+  import { useNavigation, useFocusEffect } from '@react-navigation/native';
   import styles from '../styles/cursosStyles';
   import { FontAwesome5, Ionicons } from '@expo/vector-icons';
 
@@ -31,51 +31,55 @@
 
     const hayFiltrosActivos = filtrosAplicados.estado !== null;
 
-    // Fetch courses from REST API
-    useEffect(() => {
-      const fetchCursos = async () => {
-        try {
-          const ci = getLoggedCi();
-          const voluntario = await getVoluntarioByCi(ci);
-          if (!voluntario?.id) return;
+    // Fetch courses from REST API - se ejecuta cada vez que la pantalla vuelve a estar en foco
+    const fetchCursos = useCallback(async () => {
+      try {
+        const ci = getLoggedCi();
+        const voluntario = await getVoluntarioByCi(ci);
+        if (!voluntario?.id) return;
 
-          const cursos = await getCursosByVoluntario(voluntario.id);
+        const cursos = await getCursosByVoluntario(voluntario.id);
 
-          const cursosAdaptados = cursos.map((curso) => {
-            const totalEtapas = curso.etapas?.length || 0;
-            const completadas = curso.etapas?.filter(e => e.estado === 'completado').length || 0;
+        const cursosAdaptados = cursos.map((curso) => {
+          const totalEtapas = curso.etapas?.length || 0;
+          const completadas = curso.etapas?.filter(e => e.estado === 'completado').length || 0;
 
-            const progreso = totalEtapas > 0 ? Math.round((completadas / totalEtapas) * 100) : 0;
-            let estado = 'Sin empezar';
-            if (completadas === totalEtapas && totalEtapas > 0) estado = 'Finalizado';
-            else if (completadas > 0) estado = 'En progreso';
+          const progreso = totalEtapas > 0 ? Math.round((completadas / totalEtapas) * 100) : 0;
+          let estado = 'Sin empezar';
+          if (completadas === totalEtapas && totalEtapas > 0) estado = 'Finalizado';
+          else if (completadas > 0) estado = 'En progreso';
 
-            return {
-              id: curso.id,
-              titulo: curso.nombre,
-              estado,
-              progreso,
-              fechaInicio: curso.etapas?.[0]?.fechaInicio ?? '',
-              fechaFin: curso.etapas?.[curso.etapas.length - 1]?.fechaFinalizacion ?? '',
-              etapas: curso.etapas?.map(et => ({
-                id: et.id,
-                nombre: et.nombre,
-                orden: et.orden,
-                estado: et.estado,
-                fechaInicio: et.fechaInicio,
-                fechaFinalizacion: et.fechaFinalizacion,
-              })) || [],
-            };
-          });
+          return {
+            id: curso.id,
+            titulo: curso.nombre,
+            estado,
+            progreso,
+            fechaInicio: curso.etapas?.[0]?.fechaInicio ?? '',
+            fechaFin: curso.etapas?.[curso.etapas.length - 1]?.fechaFinalizacion ?? '',
+            voluntarioId: voluntario.id,           // 👈 importante
+            etapas: curso.etapas?.map(et => ({
+              id: et.id,
+              nombre: et.nombre,
+              orden: et.orden,
+              estado: et.estado,
+              fechaInicio: et.fechaInicio,
+              fechaFinalizacion: et.fechaFinalizacion,
+            })) || [],
+          };
+        });
 
-          setCursos(cursosAdaptados);
-        } catch (err) {
-          console.error('Error al obtener cursos:', err);
-        }
-      };
-
-      fetchCursos();
+        setCursos(cursosAdaptados);
+      } catch (err) {
+        console.error('Error al obtener cursos:', err);
+      }
     }, []);
+
+    // Recargar cursos cada vez que la pantalla vuelve a estar en foco
+    useFocusEffect(
+      useCallback(() => {
+        fetchCursos();
+      }, [fetchCursos])
+    );
 
 
     const abrirPanel = () => {
@@ -165,15 +169,17 @@
           renderItem={({ item }) => {
             const cursoDetalle = {
               ...item,
+              voluntarioId: item.voluntarioId, 
               stages: item.etapas.map(et => ({
                 id: et.id,
                 title: et.nombre,
                 description: `Etapa ${et.orden}`,
-                estado: et.estado,
+                estado: et.estado,     
                 fechaInicio: et.fechaInicio,
                 fechaFinalizacion: et.fechaFinalizacion,
-              }))
+              })),
             };
+
 
             return (
                 <TouchableOpacity

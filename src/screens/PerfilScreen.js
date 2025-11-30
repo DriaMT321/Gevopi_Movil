@@ -567,27 +567,27 @@ export default function PerfilScreen() {
         </TouchableOpacity>
 
         <View style={{ alignItems: 'center', marginTop: 20, marginBottom: 40 }}>
-  <TouchableOpacity
-    onPress={() => navigation.navigate("Comunicacion")}
-    style={{
-      backgroundColor: colors.naranjaFuerte,
-      paddingVertical: 14,
-      paddingHorizontal: 30,
-      borderRadius: 30,
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 10,
-      elevation: 3
-    }}
-  >
-    <Ionicons name="chatbox-ellipses-outline" size={22} color="#fff" />
-    <Text style={{ color: "#fff", fontSize: 18, fontWeight: "bold" }}>
-      Comunicación
-    </Text>
-  </TouchableOpacity>
-</View>
-
+          <TouchableOpacity
+            onPress={() => navigation.navigate("Comunicacion")}
+            style={{
+              backgroundColor: colors.naranjaFuerte,
+              paddingVertical: 14,
+              paddingHorizontal: 30,
+              borderRadius: 30,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 10,
+              elevation: 3
+            }}
+          >
+            <Ionicons name="chatbox-ellipses-outline" size={22} color="#fff" />
+            <Text style={{ color: "#fff", fontSize: 18, fontWeight: "bold" }}>
+              Comunicación
+            </Text>
+          </TouchableOpacity>
+        </View>
+  
 
         
 

@@ -5,28 +5,24 @@
   import colors from '../themes/colors';
   import styles from '../styles/detalleCursosStyles';
   import * as Progress from 'react-native-progress';
-  import { cambiarEstadoEtapa } from '../services/mutationSQL';
+  import { cambiarEstadoEtapa } from '../services/cursosService';
+
 
   export default function DetalleCursosScreen() {
     const navigation = useNavigation();
     const route = useRoute();
     const { curso: initialCourse } = route.params;
     const adaptCourse = (course) => {
-      const stages = course.etapas.map((etapa, index) => ({
-        id: etapa.id,
-        title: etapa.nombre,
-        description: `Etapa ${etapa.orden}`,
-        status: etapa.estado,
-        fechaInicio: etapa.fechaInicio,
-        fechaFinalizacion: etapa.fechaFinalizacion,
-      }));
+      const stages = course.stages; // ya vienen armadas en CursosScreen
 
-      const completedCount = stages.filter(s => s.status === 'Completado').length;
-      const progreso = Math.floor((completedCount / stages.length) * 100);
+      const completedCount = stages.filter(s => s.estado === 'completado').length;
+      const progreso = stages.length > 0
+        ? Math.floor((completedCount / stages.length) * 100)
+        : 0;
 
-      let estado = 'No Empezado';
+      let estado = 'Sin empezar';
       if (progreso === 100) estado = 'Finalizado';
-      else if (progreso > 0) estado = 'En Progreso';
+      else if (progreso > 0) estado = 'En progreso';
 
       return {
         ...course,
@@ -36,43 +32,57 @@
       };
     };
 
+    const getStatusLabel = (estado) => {
+      switch (estado) {
+        case 'sin_empezar': return 'No Empezado';
+        case 'en_progreso': return 'En Progreso';
+        case 'completado':  return 'Completado';
+        default:            return estado;
+      }
+    };
+
+
 
     const [curso, setCurso] = useState(() => adaptCourse(initialCourse));
-    const allStagesCompleted = curso.stages.every(stage => stage.status === 'Completado');
+    const allStagesCompleted = curso.stages.every(stage => stage.estado === 'completado');
 
 
     const handleStageStatusCycle = async (stageId) => {
       try {
-        const updatedStages = curso.stages.map(stage => {
-          if (stage.id === stageId) {
-            let nextStatus;
-            if (stage.status === 'No Empezado') nextStatus = 'En Progreso';
-            else if (stage.status === 'En Progreso') nextStatus = 'Completado';
-            else nextStatus = 'No Empezado';
-            return { ...stage, status: nextStatus };
-          }
-          return stage;
+        const resp = await cambiarEstadoEtapa(stageId, curso.voluntarioId);
+        const nuevo = resp.data.data; // 👈 aquí estaba el detalle
+
+        setCurso(prevCurso => {
+          const updatedStages = prevCurso.stages.map(stage => {
+            if (stage.id === stageId) {
+              return {
+                ...stage,
+                estado: nuevo.estado,
+                fechaInicio: nuevo.fecha_inicio,
+                fechaFinalizacion: nuevo.fecha_finalizacion,
+              };
+            }
+            return stage;
+          });
+
+          const completedCount = updatedStages.filter(s => s.estado === 'completado').length;
+          const newProgreso = Math.floor((completedCount / updatedStages.length) * 100);
+
+          let newEstado = 'Sin empezar';
+          if (newProgreso === 100) newEstado = 'Finalizado';
+          else if (newProgreso > 0) newEstado = 'En progreso';
+
+          return { ...prevCurso, stages: updatedStages, progreso: newProgreso, estado: newEstado };
         });
 
-        const completedCount = updatedStages.filter(s => s.status === 'Completado').length;
-        const newProgreso = Math.floor((completedCount / updatedStages.length) * 100);
-        let newEstado = 'No Empezado';
-        if (newProgreso === 100) newEstado = 'Finalizado';
-        else if (newProgreso > 0) newEstado = 'En Progreso';
-
-        setCurso(prevCurso => ({
-          ...prevCurso,
-          stages: updatedStages,
-          estado: newEstado,
-          progreso: newProgreso,
-        }));
-
-        await cambiarEstadoEtapa(stageId);
       } catch (error) {
-        console.error('Error al cambiar estado:', error);
+        console.error('Error al cambiar estado:', error.response?.status, error.response?.data || error.message);
         Alert.alert('Error', 'No se pudo actualizar la etapa en el servidor.');
       }
     };
+
+
+
 
     const handleFinalizeCourse = () => {
       if (allStagesCompleted) {
@@ -114,72 +124,89 @@
             <View style={styles.progressContainer}>
               <Text style={styles.progressSectionTitle}>Etapas del Curso</Text>
               {curso.stages.map((stage, index) => {
-                const isCompleted = stage.status === 'Completado';
-                const isFirstIncomplete = curso.stages.findIndex(s => s.status !== 'Completado') === index;
+                // ahora usamos los estados del backend: sin_empezar, en_progreso, completado
+                const isCompleted = stage.estado === 'completado';
+                const firstIncompleteIndex = curso.stages.findIndex(s => s.estado !== 'completado');
+                const isFirstIncomplete = firstIncompleteIndex === index;
                 const isTouchable = !isCompleted && isFirstIncomplete;
 
                 return (
-                    <View key={stage.id} style={styles.stepWrapper}>
-                      <View style={styles.stepLineContainer}>
-                        <View style={[
+                  <View key={stage.id} style={styles.stepWrapper}>
+                    <View style={styles.stepLineContainer}>
+                      <View
+                        style={[
                           styles.stepCircle,
                           isCompleted && styles.stepCircleCompleted,
-                          stage.status === 'En Progreso' && styles.stepCircleInProgress,
-                        ]}>
-                          {isCompleted ? (
-                              <Ionicons name="checkmark-sharp" size={18} color={colors.blanco} />
-                          ) : (
-                              <Text style={styles.stepNumber}>{index + 1}</Text>
-                          )}
-                        </View>
-                        <View style={[
-                          styles.stepLine,
-                          isCompleted && styles.stepLineCompleted
-                        ]} />
-                      </View>
-
-                      <TouchableOpacity
-                          disabled={!isTouchable}
-                          onPress={() => isTouchable && handleStageStatusCycle(stage.id)}
-                          style={[
-                            styles.stepContent,
-                            isCompleted && styles.stepContentCompleted,
-                            stage.status === 'En Progreso' && styles.stepContentInProgress,
-                            !isTouchable && { opacity: 0.6 }, // Visualmente desactiva
-                          ]}
+                          stage.estado === 'en_progreso' && styles.stepCircleInProgress,
+                        ]}
                       >
-                        <View style={styles.stepTextContainer}>
-                          <Text style={[
+                        {isCompleted ? (
+                          <Ionicons name="checkmark-sharp" size={18} color={colors.blanco} />
+                        ) : (
+                          <Text style={styles.stepNumber}>{index + 1}</Text>
+                        )}
+                      </View>
+                      <View
+                        style={[
+                          styles.stepLine,
+                          isCompleted && styles.stepLineCompleted,
+                        ]}
+                      />
+                    </View>
+
+                    <TouchableOpacity
+                      disabled={!isTouchable}
+                      onPress={() => isTouchable && handleStageStatusCycle(stage.id)}
+                      style={[
+                        styles.stepContent,
+                        isCompleted && styles.stepContentCompleted,
+                        stage.estado === 'en_progreso' && styles.stepContentInProgress,
+                        !isTouchable && { opacity: 0.6 },
+                      ]}
+                    >
+                      <View style={styles.stepTextContainer}>
+                        <Text
+                          style={[
                             styles.stepTitle,
                             isCompleted && styles.stepTitleCompleted,
-                            stage.status === 'En Progreso' && styles.stepTitleInProgress,
-                          ]}>
-                            {stage.title}
-                          </Text>
-                          <Text style={[
+                            stage.estado === 'en_progreso' && styles.stepTitleInProgress,
+                          ]}
+                        >
+                          {stage.title}
+                        </Text>
+
+                        <Text
+                          style={[
                             styles.stepDescription,
                             isCompleted && styles.stepDescriptionCompleted,
-                            stage.status === 'En Progreso' && styles.stepDescriptionInProgress,
-                          ]}>
-                            {stage.description}
-                          </Text>
-                          <Text style={[
+                            stage.estado === 'en_progreso' && styles.stepDescriptionInProgress,
+                          ]}
+                        >
+                          {stage.description}
+                        </Text>
+
+                        {/* AQUÍ VA el Text que preguntabas */}
+                        <Text
+                          style={[
                             styles.stageStatusText,
-                            stage.status === 'No Empezado' && styles.stageStatusNoEmpezado,
-                            stage.status === 'En Progreso' && styles.stageStatusEnProgreso,
+                            stage.estado === 'sin_empezar' && styles.stageStatusNoEmpezado,
+                            stage.estado === 'en_progreso' && styles.stageStatusEnProgreso,
                             isCompleted && styles.stageStatusCompletado,
-                          ]}>
-                            {stage.status}
-                          </Text>
-                        </View>
-                        {stage.status !== 'Completado' && (
-                            <FontAwesome5 name="chevron-right" size={14} color={colors.gray} />
-                        )}
-                      </TouchableOpacity>
-                    </View>
+                          ]}
+                        >
+                          {getStatusLabel(stage.estado)}
+                        </Text>
+                      </View>
+
+                      {!isCompleted && (
+                        <FontAwesome5 name="chevron-right" size={14} color={colors.gray} />
+                      )}
+                    </TouchableOpacity>
+                  </View>
                 );
               })}
             </View>
+
 
             <TouchableOpacity
                 style={[styles.finishButton, !allStagesCompleted && styles.finishButtonDisabled]}
