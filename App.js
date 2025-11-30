@@ -3,8 +3,6 @@ import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { ApolloProvider } from '@apollo/client';
-import client from './src/services/apiSQL'; // cliente Apollo configurado
 
 // Screens
 import LoginScreen from './src/screens/LoginScreen';
@@ -24,9 +22,8 @@ const Stack = createNativeStackNavigator();
 export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <ApolloProvider client={client}>
-        <NavigationContainer>
-          <Stack.Navigator initialRouteName="Login" screenOptions={{ headerShown: false }}>
+      <NavigationContainer>
+        <Stack.Navigator initialRouteName="Login" screenOptions={{ headerShown: false }}>
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="Perfil" component={PerfilScreen} />
             <Stack.Screen name="Evaluaciones" component={EvaluacionesScreen} />
@@ -43,7 +40,6 @@ export default function App() {
           </Stack.Navigator>
           <StatusBar style="auto" />
         </NavigationContainer>
-      </ApolloProvider>
     </GestureHandlerRootView>
   );
 }
