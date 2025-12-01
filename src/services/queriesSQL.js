@@ -28,6 +28,32 @@ export const obtenerReportePorVoluntarioId = async (id) => {
   }
 };
 
+export const obtenerNecesidadesPorVoluntarioId = async (id) => {
+  try {
+    const token = getToken();
+    const response = await api.get(`/voluntarios/${id}/necesidades`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.data.data || [];
+  } catch (error) {
+    console.warn('Error obteniendo necesidades:', error.message);
+    return [];
+  }
+};
+
+export const obtenerCapacitacionesPorVoluntarioId = async (id) => {
+  try {
+    const token = getToken();
+    const response = await api.get(`/voluntarios/${id}/capacitaciones-asignadas`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.data.data || [];
+  } catch (error) {
+    console.warn('Error obteniendo capacitaciones:', error.message);
+    return [];
+  }
+};
+
 export const GET_EVALUACIONES = {
   // Placeholder - las evaluaciones se cargarán via REST cuando esté disponible
 };

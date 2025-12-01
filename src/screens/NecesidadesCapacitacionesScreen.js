@@ -7,7 +7,7 @@ import styles from '../styles/necesidades_capacitacionesStyles';
 import { FontAwesome5, Ionicons } from '@expo/vector-icons';
 import { getLoggedCi } from '../services/authService';
 import { getVoluntarioByCi } from '../services/voluntarioService';
-import { obtenerReportePorVoluntarioId } from '../services/queriesSQL';
+import { obtenerNecesidadesPorVoluntarioId, obtenerCapacitacionesPorVoluntarioId } from '../services/queriesSQL';
 
 export default function NecesidadesCapacitacionesScreen() {
   const navigation = useNavigation();
@@ -44,29 +44,31 @@ export default function NecesidadesCapacitacionesScreen() {
 
       if (!voluntario || !voluntario.id) return;
   
-      const reportes = await obtenerReportePorVoluntarioId(voluntario.id.toString());
-  
-      if (reportes?.length > 0) {
-        const masReciente = [...reportes].sort(
-          (a, b) => new Date(b.fechaGenerado) - new Date(a.fechaGenerado)
-        )[0];
-      
-        const necesidades = masReciente.necesidades?.map((n) => ({
-          tipo: "necesidad",
-          titulo: n.tipo,
-          descripcion: n.descripcion,
-          fecha: masReciente.fechaGenerado,
-        })) || [];
-      
-        const capacitaciones = masReciente.capacitaciones?.map((c) => ({
-          tipo: "capacitacion",
-          titulo: c.nombre,
-          descripcion: c.descripcion,
-          fecha: masReciente.fechaGenerado,
-        })) || [];
-      
-        setItems([...necesidades, ...capacitaciones]);
-      }
+      // Obtener necesidades y capacitaciones usando los nuevos endpoints
+      const [necesidadesData, capacitacionesData] = await Promise.all([
+        obtenerNecesidadesPorVoluntarioId(voluntario.id.toString()),
+        obtenerCapacitacionesPorVoluntarioId(voluntario.id.toString())
+      ]);
+
+      console.log("Necesidades:", necesidadesData);
+      console.log("Capacitaciones:", capacitacionesData);
+
+      const necesidades = necesidadesData?.map((n) => ({
+        tipo: "necesidad",
+        titulo: n.tipo,
+        descripcion: n.descripcion,
+        fecha: n.fechaAsignacion || n.fechaasignacion,
+      })) || [];
+    
+      const capacitaciones = capacitacionesData?.map((c) => ({
+        tipo: "capacitacion",
+        titulo: c.nombre,
+        descripcion: c.descripcion || `Curso: ${c.cursoNombre || c.cursonombre}`,
+        fecha: c.fechaInicio || c.fechainicio,
+        estado: c.estado,
+      })) || [];
+    
+      setItems([...necesidades, ...capacitaciones]);
     } catch (error) {
       console.error("Error cargando necesidades/capacitaciones:", error);
     }
@@ -182,7 +184,8 @@ export default function NecesidadesCapacitacionesScreen() {
           <View style={styles.card}>
             <Text style={styles.cardTitle}>{item.titulo}</Text>
             <Text style={styles.cardSubtitle}>{item.descripcion}</Text>
-            <Text style={styles.cardFecha}>Fecha: {new Date(item.fecha).toLocaleDateString()}</Text>
+            <Text style={styles.cardFecha}>Fecha: {item.fecha ? new Date(item.fecha).toLocaleDateString() : 'No disponible'}</Text>
+            {item.estado && <Text style={[styles.cardFecha, { color: item.estado === 'completado' ? '#4CAF50' : '#FF9800' }]}>Estado: {item.estado}</Text>}
           </View>
         )}
       />

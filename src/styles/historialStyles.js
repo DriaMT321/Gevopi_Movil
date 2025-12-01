@@ -63,6 +63,7 @@ export default StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 6,
     borderLeftColor: colors.amarillo,
+    minHeight: 120,
   },
   cardTitle: {
     fontSize: 18,
@@ -73,6 +74,8 @@ export default StyleSheet.create({
   cardSubtitle: {
     fontSize: 14,
     color: colors.black,
+    numberOfLines: 3,
+    flex: 1,
   },
   cardFecha: {
     color: colors.textoSecundario,

@@ -338,6 +338,7 @@ export default StyleSheet.create({
     width: '98%',
     borderLeftWidth: 4,
     borderLeftColor: colors.amarillo,
+    minHeight: 100,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -365,6 +366,7 @@ export default StyleSheet.create({
     fontSize: 14,
     color: colors.dark,
     lineHeight: 20,
+    maxHeight: 40,
   },
   emptyStateContainer: {
     backgroundColor: colors.blanco,

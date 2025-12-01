@@ -9,7 +9,9 @@ import {
   ActivityIndicator,
   ScrollView,
   Keyboard,
-  Alert
+  Alert,
+  KeyboardAvoidingView,
+  Platform
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import colors from '../themes/colors';
@@ -26,6 +28,7 @@ export default function LoginScreen() {
   const subtitleOpacity = useRef(new Animated.Value(0)).current;
   const loadingOpacity = useRef(new Animated.Value(1)).current;
   const screenFadeOut = useRef(new Animated.Value(1)).current;
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -38,6 +41,22 @@ export default function LoginScreen() {
   });
 
   const navigation = useNavigation();
+
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener(
+      'keyboardDidShow',
+      () => setKeyboardVisible(true)
+    );
+    const keyboardDidHideListener = Keyboard.addListener(
+      'keyboardDidHide',
+      () => setKeyboardVisible(false)
+    );
+
+    return () => {
+      keyboardDidHideListener.remove();
+      keyboardDidShowListener.remove();
+    };
+  }, []);
 
   useEffect(() => {
     Animated.sequence([
@@ -131,7 +150,6 @@ export default function LoginScreen() {
 
     } catch (error) {
       Alert.alert('Error de autenticación', 'Usuario o contraseña incorrectos');
-      console.error("Error al iniciar sesión:", error);
     }
   };
 
@@ -140,38 +158,46 @@ export default function LoginScreen() {
   };
 
   return (
-    <ScrollView 
-      contentContainerStyle={{ flexGrow: 1 }} 
-      keyboardShouldPersistTaps="handled"
+    <KeyboardAvoidingView 
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <Animated.View style={[styles.container, { opacity: screenFadeOut }]}>
-        <Animated.View
-          style={{
-            alignItems: 'center',
-            position: 'absolute',
-            top: height / 2 - 80,
-            transform: [{ translateY: titleAnimY }],
-            zIndex: 10,
-            elevation: 10,
-          }}
-        >
-          <Animated.Text style={[styles.title, { color: interpolatedColor }]}>
-            GEVOPI
-          </Animated.Text>
+      <ScrollView 
+        contentContainerStyle={{ flexGrow: 1 }} 
+        keyboardShouldPersistTaps="handled"
+      >
+        <Animated.View style={[styles.container, { opacity: screenFadeOut }]}>
+          {!isKeyboardVisible && (
+            <Animated.View
+              style={{
+                alignItems: 'center',
+                position: 'absolute',
+                top: height / 2 - 120,
+                transform: [{ translateY: titleAnimY }],
+                zIndex: 10,
+                elevation: 10,
+              }}
+            >
+              <Animated.Text style={[styles.title, { color: interpolatedColor }]}>
+                GEVOPI
+              </Animated.Text>
 
-          <Animated.View style={{ opacity: loadingOpacity, marginTop: 15 }}>
-            <ActivityIndicator size="large" color={colors.verdeOscuro} />
-          </Animated.View>
-        </Animated.View>
+              <Animated.View style={{ opacity: loadingOpacity, marginTop: 15 }}>
+                <ActivityIndicator size="large" color={colors.verdeOscuro} />
+              </Animated.View>
+            </Animated.View>
+          )}
 
-        <Animated.View style={[styles.blueContainer, { transform: [{ translateY: blueAnim }] }]} />
+          <Animated.View style={[styles.blueContainer, { transform: [{ translateY: blueAnim }] }]} />
 
-        <Animated.Text style={[styles.subtitle, { opacity: subtitleOpacity }]}>
-          Tu bienestar también importa
-        </Animated.Text>
+          {!isKeyboardVisible && (
+            <Animated.Text style={[styles.subtitle, { opacity: subtitleOpacity }]}>
+              Tu bienestar también importa
+            </Animated.Text>
+          )}
 
-        <Animated.View style={[styles.card, { opacity: formOpacity }]}>
-          <Text style={styles.cardTitle}>Inicia Sesión</Text>
+          <Animated.View style={[styles.card, { opacity: formOpacity, marginTop: isKeyboardVisible ? 100 : 0 }]}>
+            <Text style={styles.cardTitle}>Inicia Sesión</Text>
 
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Usuario</Text>
@@ -232,5 +258,6 @@ export default function LoginScreen() {
         </Animated.View>
       </Animated.View>
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }

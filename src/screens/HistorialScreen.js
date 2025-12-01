@@ -180,7 +180,7 @@ export default function HistorialScreen() {
         renderItem={({ item }) => (
           <View style={styles.card}>
             <Text style={styles.cardTitle}>{item.titulo}</Text>
-            <Text style={styles.cardSubtitle}>{item.descripcion}</Text>
+            <Text style={styles.cardSubtitle} numberOfLines={3} ellipsizeMode="tail">{item.descripcion}</Text>
             <Text style={styles.cardFecha}>Fecha: {new Date(item.fecha).toLocaleDateString()}</Text>
           </View>
         )}

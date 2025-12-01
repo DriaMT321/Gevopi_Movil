@@ -27,7 +27,7 @@ import { getUsuarios } from '../services/usuarioService';
 import { getVoluntarioByUsuarioId } from '../services/voluntarioService';
 import { getLoggedCi, logout } from '../services/authService';
 import { getVoluntarioByCi } from '../services/voluntarioService';
-import { obtenerReportePorVoluntarioId, obtenerCursosPorVoluntarioId } from '../services/queriesSQL';
+import { obtenerReportePorVoluntarioId, obtenerCursosPorVoluntarioId, obtenerNecesidadesPorVoluntarioId, obtenerCapacitacionesPorVoluntarioId } from '../services/queriesSQL';
 import { crearSolicitudAyuda } from '../services/solicitudService';
 
 const { width } = Dimensions.get('window');
@@ -41,6 +41,8 @@ export default function PerfilScreen() {
   const [necesidadesIndex, setNecesidadesIndex] = useState(0);
   const [emergenciaVisible, setEmergenciaVisible] = useState(false);
   const [reporte, setReporte] = useState(null);
+  const [necesidades, setNecesidades] = useState([]);
+  const [capacitaciones, setCapacitaciones] = useState([]);
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
 
   const modalOffsetAnim = useRef(new Animated.Value(0)).current;
@@ -74,7 +76,7 @@ export default function PerfilScreen() {
     {
       titulo: 'Necesidades',
       screen: 'NecesidadesCapacitaciones',
-      items: reporte?.necesidades?.map((n) => ({
+      items: necesidades?.map((n) => ({
         titulo: n.tipo,
         descripcion: n.descripcion,
       })).slice(0, 3) || [],
@@ -82,9 +84,9 @@ export default function PerfilScreen() {
     {
       titulo: 'Capacitaciones',
       screen: 'NecesidadesCapacitaciones',
-      items: reporte?.capacitaciones?.map((c) => ({
+      items: capacitaciones?.map((c) => ({
         titulo: c.nombre,
-        descripcion: c.descripcion,
+        descripcion: c.descripcion || `Curso: ${c.cursoNombre}`,
       })).slice(0, 3) || [],
     },
   ];
@@ -262,7 +264,15 @@ const handleEnviarSolicitud = async () => {
         setVoluntario(voluntarioData);
         const reportes = await obtenerReportePorVoluntarioId(voluntarioData.id.toString());
         const cursos = await obtenerCursosPorVoluntarioId(voluntarioData.id);
+        const necesidadesData = await obtenerNecesidadesPorVoluntarioId(voluntarioData.id.toString());
+        const capacitacionesData = await obtenerCapacitacionesPorVoluntarioId(voluntarioData.id.toString());
 
+        if (necesidadesData) {
+          setNecesidades(necesidadesData);
+        }
+        if (capacitacionesData) {
+          setCapacitaciones(capacitacionesData);
+        }
 
         if (reportes && reportes.length > 0) {
           const masReciente = [...reportes].sort((a, b) => new Date(b.fechaGenerado) - new Date(a.fechaGenerado))[0];
@@ -436,7 +446,7 @@ const handleEnviarSolicitud = async () => {
                 </View>
               )}
             </View>
-            <Text style={styles.cardDescription}>{subItem.descripcion}</Text>
+            <Text style={styles.cardDescription} numberOfLines={2} ellipsizeMode="tail">{subItem.descripcion}</Text>
           </View>
         ))
       ) : (
