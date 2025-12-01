@@ -54,6 +54,19 @@ export const obtenerCapacitacionesPorVoluntarioId = async (id) => {
   }
 };
 
+export const obtenerEvaluacionesPorVoluntarioId = async (id) => {
+  try {
+    const token = getToken();
+    const response = await api.get(`/evaluaciones/historial/${id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return response.data?.data?.reportes || [];
+  } catch (error) {
+    console.warn('Error obteniendo evaluaciones:', error.message);
+    return [];
+  }
+};
+
 export const GET_EVALUACIONES = {
   // Placeholder - las evaluaciones se cargarán via REST cuando esté disponible
 };

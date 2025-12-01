@@ -8,6 +8,7 @@ import { FontAwesome5, Ionicons } from '@expo/vector-icons';
 
 import { getLoggedCi } from '../services/authService';
 import { getVoluntarioByCi } from '../services/voluntarioService';
+import { obtenerEvaluacionesPorVoluntarioId } from '../services/queriesSQL';
 
 export default function EvaluacionesScreen() {
   const navigation = useNavigation();
@@ -52,8 +53,50 @@ export default function EvaluacionesScreen() {
         const voluntario = await getVoluntarioByCi(ci);
         if (voluntario && voluntario.id) {
           setVoluntarioId(parseInt(voluntario.id));
-          // Por ahora las evaluaciones están vacías hasta implementar el endpoint REST
-          setEvaluaciones([]);
+          
+          // Obtener evaluaciones del backend
+          const reportes = await obtenerEvaluacionesPorVoluntarioId(voluntario.id);
+          console.log('Reportes obtenidos:', reportes);
+          
+          // Adaptar: cada reporte puede tener evaluación física Y emocional
+          const evaluacionesAdaptadas = [];
+          reportes.forEach(reporte => {
+            const fechaFormateada = reporte.fecha ? reporte.fecha : null;
+            
+            // Agregar evaluación física si existe
+            if (reporte.resumen_fisico) {
+              evaluacionesAdaptadas.push({
+                id: `${reporte.id}-fisica`,
+                reporteId: reporte.id,
+                titulo: 'Evaluacion Fisica',
+                tipo: 'fisica',
+                fechaRealizada: fechaFormateada,
+                fechaResultado: fechaFormateada,
+                resumen: reporte.resumen_fisico,
+                observaciones: reporte.observaciones,
+                recomendaciones: reporte.recomendaciones,
+                estado_general: reporte.estado_general,
+              });
+            }
+            
+            // Agregar evaluación emocional si existe
+            if (reporte.resumen_emocional) {
+              evaluacionesAdaptadas.push({
+                id: `${reporte.id}-emocional`,
+                reporteId: reporte.id,
+                titulo: 'Evaluacion Emocional',
+                tipo: 'emocional',
+                fechaRealizada: fechaFormateada,
+                fechaResultado: fechaFormateada,
+                resumen: reporte.resumen_emocional,
+                observaciones: reporte.observaciones,
+                recomendaciones: reporte.recomendaciones,
+                estado_general: reporte.estado_general,
+              });
+            }
+          });
+          
+          setEvaluaciones(evaluacionesAdaptadas);
         }
       } catch (error) {
         console.error('Error al obtener datos:', error);

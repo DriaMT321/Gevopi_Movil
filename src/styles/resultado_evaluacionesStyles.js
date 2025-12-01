@@ -95,6 +95,7 @@ export default StyleSheet.create({
     backgroundColor: colors.card,
     borderRadius: 12,
     padding: 20,
+    marginBottom: 20,
     shadowColor: colors.sombraSuave,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,

@@ -10,10 +10,11 @@ const ResultadoEvaluacionesScreen = () => {
   const route = useRoute();
 
   const evaluacion = route.params?.evaluacion || {};
-  const reporte = route.params?.reporte || {};
-
+  
   // Función para determinar el tipo de evaluación
   const getTipoEvaluacion = () => {
+    if (evaluacion.tipo === 'fisica') return 'Física';
+    if (evaluacion.tipo === 'emocional') return 'Emocional';
     if (evaluacion.titulo?.toLowerCase().includes('física')) return 'Física';
     if (evaluacion.titulo?.toLowerCase().includes('emocional')) return 'Emocional';
     return 'General';
@@ -65,6 +66,32 @@ const ResultadoEvaluacionesScreen = () => {
           </View>
         </View>
 
+        {/* Resumen de evaluación */}
+        {evaluacion?.resumen ? (
+          <View style={styles.reportSection}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="document" size={22} color={colors.naranjaFuerte} />
+              <Text style={styles.sectionTitle}>Resumen de Evaluación</Text>
+            </View>
+            <View style={styles.contentBox}>
+              <Text style={styles.listText}>{evaluacion.resumen}</Text>
+            </View>
+          </View>
+        ) : null}
+
+        {/* Estado general */}
+        {evaluacion?.estado_general ? (
+          <View style={styles.reportSection}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="stats-chart" size={22} color={colors.naranjaFuerte} />
+              <Text style={styles.sectionTitle}>Estado General</Text>
+            </View>
+            <View style={styles.contentBox}>
+              <Text style={styles.listText}>{evaluacion.estado_general}</Text>
+            </View>
+          </View>
+        ) : null}
+
         {/* Sección de informe */}
         <View style={styles.reportSection}>
           <View style={styles.sectionHeader}>
@@ -73,14 +100,14 @@ const ResultadoEvaluacionesScreen = () => {
           </View>
 
           {/* Observaciones */}
-          {reporte?.observaciones ? (
+          {evaluacion?.observaciones ? (
             <View style={styles.subSection}>
               <View style={styles.subSectionHeader}>
                 <Text style={styles.subSectionTitle}>Observaciones Clínicas</Text>
                 <Ionicons name="eye" size={18} color={colors.amarillo} />
               </View>
               <View style={styles.contentBox}>
-                {reporte.observaciones.split('\n').map((obs, i) => (
+                {evaluacion.observaciones.split('\n').map((obs, i) => (
                   <View key={`obs-${i}`} style={styles.listItem}>
                     <Text style={styles.bullet}>•</Text>
                     <Text style={styles.listText}>{obs}</Text>
@@ -91,14 +118,14 @@ const ResultadoEvaluacionesScreen = () => {
           ) : null}
 
           {/* Recomendaciones */}
-          {reporte?.recomendaciones ? (
+          {evaluacion?.recomendaciones ? (
             <View style={styles.subSection}>
               <View style={styles.subSectionHeader}>
                 <Text style={styles.subSectionTitle}>Recomendaciones</Text>
                 <Ionicons name="medkit" size={18} color={colors.amarillo} />
               </View>
               <View style={styles.contentBox}>
-                {reporte.recomendaciones.split('\n').map((rec, i) => (
+                {evaluacion.recomendaciones.split('\n').map((rec, i) => (
                   <View key={`rec-${i}`} style={styles.listItem}>
                     <Text style={styles.bullet}>•</Text>
                     <Text style={styles.listText}>{rec}</Text>
@@ -109,7 +136,7 @@ const ResultadoEvaluacionesScreen = () => {
           ) : null}
 
           {/* Mensaje si no hay datos */}
-          {(!reporte?.observaciones && !reporte?.recomendaciones) && (
+          {(!evaluacion?.observaciones && !evaluacion?.recomendaciones) && (
             <View style={styles.emptyState}>
               <Ionicons name="information-circle" size={24} color={colors.gris} />
               <Text style={styles.emptyText}>No hay observaciones ni recomendaciones disponibles</Text>
