@@ -1,8 +1,8 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, FlatList, Animated, Pressable, Modal, Platform } from 'react-native';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { View, Text, TextInput, TouchableOpacity, FlatList, Animated, Pressable, Modal, Platform, RefreshControl } from 'react-native';
 import colors from '../themes/colors';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import styles from '../styles/necesidades_capacitacionesStyles';
 import { FontAwesome5, Ionicons } from '@expo/vector-icons';
 import { getLoggedCi } from '../services/authService';
@@ -34,8 +34,10 @@ export default function NecesidadesCapacitacionesScreen() {
   const searchWidthAnim = useRef(new Animated.Value(1)).current;
 
   const [items, setItems] = useState([]);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
     try {
       const ci = await getLoggedCi(); 
       const voluntario = await getVoluntarioByCi(ci);
@@ -71,12 +73,20 @@ export default function NecesidadesCapacitacionesScreen() {
       setItems([...necesidades, ...capacitaciones]);
     } catch (error) {
       console.error("Error cargando necesidades/capacitaciones:", error);
+    } finally {
+      setRefreshing(false);
     }
-  };
-
-  useEffect(() => {
-    fetchData();
   }, []);
+
+  const onRefresh = useCallback(() => {
+    fetchData(true);
+  }, [fetchData]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchData();
+    }, [fetchData])
+  );
 
   const hayFiltrosActivos = filtrosAplicados.tipo !== null || filtrosAplicados.desde || filtrosAplicados.hasta;
 
@@ -175,19 +185,34 @@ export default function NecesidadesCapacitacionesScreen() {
       <FlatList
         data={filtrados}
         keyExtractor={(item, index) => index.toString()}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[colors.naranjaFuerte]}
+            tintColor={colors.naranjaFuerte}
+          />
+        }
         ListEmptyComponent={() => (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>No se encontraron resultados.{"\n"}Presione la X para reiniciar los filtros.</Text>
           </View>
         )}
-        renderItem={({ item }) => (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>{item.titulo}</Text>
-            <Text style={styles.cardSubtitle}>{item.descripcion}</Text>
-            <Text style={styles.cardFecha}>Fecha: {item.fecha ? new Date(item.fecha).toLocaleDateString() : 'No disponible'}</Text>
-            {item.estado && <Text style={[styles.cardFecha, { color: item.estado === 'completado' ? '#4CAF50' : '#FF9800' }]}>Estado: {item.estado}</Text>}
-          </View>
-        )}
+        renderItem={({ item }) => {
+          const formatEstado = (estado) => {
+            if (estado === 'en_progreso') return 'En progreso';
+            if (estado === 'completado') return 'Completado';
+            return estado;
+          };
+          return (
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>{item.titulo}</Text>
+              <Text style={styles.cardSubtitle}>{item.descripcion}</Text>
+              <Text style={styles.cardFecha}>Fecha: {item.fecha ? new Date(item.fecha).toLocaleDateString() : 'No disponible'}</Text>
+              {item.estado && <Text style={[styles.cardFecha, { color: item.estado === 'completado' ? '#4CAF50' : '#FF9800' }]}>Estado: {formatEstado(item.estado)}</Text>}
+            </View>
+          );
+        }}
       />
 
       {showFilters && (

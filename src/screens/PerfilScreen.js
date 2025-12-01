@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,8 @@ import {
   Pressable,
   Image,
   ActivityIndicator,
-  KeyboardAvoidingView, Platform, Keyboard, Alert
+  KeyboardAvoidingView, Platform, Keyboard, Alert,
+  RefreshControl
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -44,27 +45,41 @@ export default function PerfilScreen() {
   const [necesidades, setNecesidades] = useState([]);
   const [capacitaciones, setCapacitaciones] = useState([]);
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [todosReportes, setTodosReportes] = useState([]);
 
   const modalOffsetAnim = useRef(new Animated.Value(0)).current;
+
+  // Preparar items de historial clínico (últimos 2)
+  const historialClinicoItems = todosReportes
+    .filter(r => r.resumenFisico)
+    .slice(0, 2)
+    .map(r => ({
+      titulo: 'Resumen Físico',
+      descripcion: r.resumenFisico,
+      fecha: new Date(r.fechaGenerado).toLocaleDateString()
+    }));
+
+  // Preparar items de historial psicológico (últimos 2)
+  const historialPsicologicoItems = todosReportes
+    .filter(r => r.resumenEmocional)
+    .slice(0, 2)
+    .map(r => ({
+      titulo: 'Resumen Emocional',
+      descripcion: r.resumenEmocional,
+      fecha: new Date(r.fechaGenerado).toLocaleDateString()
+    }));
 
   const historialData = [
     {
       titulo: 'Historial Clínico',
       screen: 'Historial',
-      items: reporte
-        ? [{
-          titulo: 'Resumen Físico',
-          descripcion: reporte.resumenFisico,
-          fecha: new Date(reporte.fechaGenerado).toLocaleDateString()
-        }].slice(0, 3)
-        : [],
+      items: historialClinicoItems,
     },
     {
       titulo: 'Historial Psicológico',
       screen: 'Historial',
-      items: reporte
-        ? [{ titulo: 'Resumen Emocional', descripcion: reporte.resumenEmocional, fecha: new Date(reporte.fechaGenerado).toLocaleDateString() }].slice(0, 3)
-        : [],
+      items: historialPsicologicoItems,
     },
   ];
 
@@ -76,18 +91,18 @@ export default function PerfilScreen() {
     {
       titulo: 'Necesidades',
       screen: 'NecesidadesCapacitaciones',
-      items: necesidades?.map((n) => ({
+      items: necesidades?.slice(0, 2).map((n) => ({
         titulo: n.tipo,
         descripcion: n.descripcion,
-      })).slice(0, 3) || [],
+      })) || [],
     },
     {
       titulo: 'Capacitaciones',
       screen: 'NecesidadesCapacitaciones',
-      items: capacitaciones?.map((c) => ({
+      items: capacitaciones?.slice(0, 2).map((c) => ({
         titulo: c.nombre,
         descripcion: c.descripcion || `Curso: ${c.cursoNombre}`,
-      })).slice(0, 3) || [],
+      })) || [],
     },
   ];
 
@@ -238,65 +253,77 @@ const handleEnviarSolicitud = async () => {
 
 
 
+  const fetchVoluntario = useCallback(async (isRefresh = false) => {
+    try {
+      if (isRefresh) setRefreshing(true);
+      const email = getLoggedCi();
+      console.log(email);
+      const voluntarioData = await getVoluntarioByCi(email);
+
+      if (!voluntarioData) {
+        console.warn('Voluntario no encontrado para:', email);
+        setVoluntario(null);
+        return;
+      }
+
+      setVoluntario(voluntarioData);
+      const reportes = await obtenerReportePorVoluntarioId(voluntarioData.id.toString());
+      const cursos = await obtenerCursosPorVoluntarioId(voluntarioData.id);
+      const necesidadesData = await obtenerNecesidadesPorVoluntarioId(voluntarioData.id.toString());
+      const capacitacionesData = await obtenerCapacitacionesPorVoluntarioId(voluntarioData.id.toString());
+
+      if (necesidadesData) {
+        setNecesidades(necesidadesData);
+      }
+      if (capacitacionesData) {
+        setCapacitaciones(capacitacionesData);
+      }
+
+      if (reportes && reportes.length > 0) {
+        const reportesOrdenados = [...reportes].sort((a, b) => new Date(b.fechaGenerado) - new Date(a.fechaGenerado));
+        setTodosReportes(reportesOrdenados);
+        setReporte(reportesOrdenados[0]); // El más reciente para otros usos
+      }
+      if (cursos) {
+        setCursosAsignados(cursos);
+      }
+    } catch (error) {
+      console.error('Error al cargar voluntario:', error);
+    } finally {
+      setLoadingVoluntario(false);
+      setRefreshing(false);
+
+      Animated.timing(blueAnim, {
+        toValue: 0,
+        duration: 800,
+        useNativeDriver: false,
+      }).start();
+    }
+  }, []);
+
+  const onRefresh = useCallback(() => {
+    fetchVoluntario(true);
+  }, [fetchVoluntario]);
+
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       fadeAnim.setValue(0);
       Animated.timing(fadeAnim, {
         toValue: 1,
         useNativeDriver: true,
       }).start();
-    }, [])
+      // Recargar datos cada vez que la pantalla recibe foco
+      fetchVoluntario();
+    }, [fetchVoluntario])
   );
 
   useEffect(() => {
-    const fetchVoluntario = async () => {
-      try {
-        const email = getLoggedCi();
-        console.log(email);
-        const voluntarioData = await getVoluntarioByCi(email);
-
-        if (!voluntarioData) {
-          console.warn('Voluntario no encontrado para:', email);
-          setVoluntario(null);
-          return;
-        }
-
-        setVoluntario(voluntarioData);
-        const reportes = await obtenerReportePorVoluntarioId(voluntarioData.id.toString());
-        const cursos = await obtenerCursosPorVoluntarioId(voluntarioData.id);
-        const necesidadesData = await obtenerNecesidadesPorVoluntarioId(voluntarioData.id.toString());
-        const capacitacionesData = await obtenerCapacitacionesPorVoluntarioId(voluntarioData.id.toString());
-
-        if (necesidadesData) {
-          setNecesidades(necesidadesData);
-        }
-        if (capacitacionesData) {
-          setCapacitaciones(capacitacionesData);
-        }
-
-        if (reportes && reportes.length > 0) {
-          const masReciente = [...reportes].sort((a, b) => new Date(b.fechaGenerado) - new Date(a.fechaGenerado))[0];
-          setReporte(masReciente);
-        }
-        if (cursos) {
-          setCursosAsignados(cursos);
-        }
-      } catch (error) {
-        console.error('Error al cargar voluntario:', error);
-      } finally {
-        setLoadingVoluntario(false);
-
-        Animated.timing(blueAnim, {
-          toValue: 0,
-          duration: 800,
-          useNativeDriver: false,
-        }).start();
-      }
+    const initFetch = async () => {
+      await fetchVoluntario();
     };
 
-    fetchVoluntario();
-
-  }, []);
+    initFetch();
+  }, [fetchVoluntario]);
 
   useEffect(() => {
     let intervalId;
@@ -518,7 +545,17 @@ const handleEnviarSolicitud = async () => {
 
   return (
     <Animated.View style={[styles.container, { backgroundColor: colors.fondo, opacity: fadeAnim }]}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
+      <ScrollView 
+        contentContainerStyle={{ paddingBottom: 100 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[colors.naranjaFuerte]}
+            tintColor={colors.naranjaFuerte}
+          />
+        }
+      >
         <Animated.View style={[styles.greenContainer, { transform: [{ translateY: blueAnim }] }]} />
 
         <View style={{ flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: 20, paddingTop: 10 }}>
@@ -634,7 +671,7 @@ const handleEnviarSolicitud = async () => {
           <Text style={styles.carouselSectionTitle}>Cursos Asignados</Text>
           {cursosAsignados && cursosAsignados.length > 0 ? (
             cursosAsignados
-              .slice(0, 3) 
+              .slice(0, 2) 
               .map((curso, index) => (
                 <View key={index} style={styles.cardContainer}>
                   <View style={styles.cardHeader}>

@@ -1,8 +1,8 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, FlatList, Animated, Pressable, Modal, Platform } from 'react-native';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { View, Text, TextInput, TouchableOpacity, FlatList, Animated, Pressable, Modal, Platform, RefreshControl } from 'react-native';
 import colors from '../themes/colors';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import styles from '../styles/historialStyles';
 import { FontAwesome5, Ionicons } from '@expo/vector-icons';
 import { getLoggedCi } from '../services/authService';
@@ -14,6 +14,7 @@ export default function HistorialScreen() {
 
   const [search, setSearch] = useState('');
   const [historial, setHistorial] = useState([]);
+  const [refreshing, setRefreshing] = useState(false);
   const [filtrosAplicados, setFiltrosAplicados] = useState({
     tipo: null,
     desde: null,
@@ -72,46 +73,59 @@ export default function HistorialScreen() {
     setPickerType(null);
   };
 
-  useEffect(() => {
-    const fetchHistorial = async () => {
-      try {
-        const ci = await getLoggedCi();
-        const voluntario = await getVoluntarioByCi(ci);
-        if (!voluntario || !voluntario.id) return;
-  
-        const reportes = await obtenerReportePorVoluntarioId(voluntario.id.toString());
-        if (reportes?.length > 0) {
-          const masReciente = [...reportes].sort((a, b) => new Date(b.fechaGenerado) - new Date(a.fechaGenerado))[0];
-  
-          const items = [];
-  
-          if (masReciente.resumenFisico) {
+  const fetchHistorial = useCallback(async (isRefresh = false) => {
+    try {
+      if (isRefresh) setRefreshing(true);
+      const ci = await getLoggedCi();
+      const voluntario = await getVoluntarioByCi(ci);
+      if (!voluntario || !voluntario.id) return;
+
+      const reportes = await obtenerReportePorVoluntarioId(voluntario.id.toString());
+      if (reportes?.length > 0) {
+        // Ordenar por fecha descendente
+        const reportesOrdenados = [...reportes].sort((a, b) => new Date(b.fechaGenerado) - new Date(a.fechaGenerado));
+
+        const items = [];
+
+        // Agregar TODOS los reportes, no solo el más reciente
+        reportesOrdenados.forEach((reporte) => {
+          if (reporte.resumenFisico) {
             items.push({
               tipo: "clinico",
               titulo: "Resumen Clínico",
-              descripcion: masReciente.resumenFisico,
-              fecha: masReciente.fechaGenerado,
+              descripcion: reporte.resumenFisico,
+              fecha: reporte.fechaGenerado,
             });
           }
-  
-          if (masReciente.resumenEmocional) {
+
+          if (reporte.resumenEmocional) {
             items.push({
               tipo: "psicologico",
               titulo: "Resumen Psicológico",
-              descripcion: masReciente.resumenEmocional,
-              fecha: masReciente.fechaGenerado,
+              descripcion: reporte.resumenEmocional,
+              fecha: reporte.fechaGenerado,
             });
           }
-  
-          setHistorial(items);
-        }
-      } catch (err) {
-        console.error("Error cargando historial:", err);
+        });
+
+        setHistorial(items);
       }
-    };
-  
-    fetchHistorial();
+    } catch (err) {
+      console.error("Error cargando historial:", err);
+    } finally {
+      setRefreshing(false);
+    }
   }, []);
+
+  const onRefresh = useCallback(() => {
+    fetchHistorial(true);
+  }, [fetchHistorial]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchHistorial();
+    }, [fetchHistorial])
+  );
 
   if (hayFiltrosActivos) {
     Animated.parallel([
@@ -172,6 +186,14 @@ export default function HistorialScreen() {
       <FlatList
         data={filtrados}
         keyExtractor={(item, index) => index.toString()}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[colors.naranjaFuerte]}
+            tintColor={colors.naranjaFuerte}
+          />
+        }
         ListEmptyComponent={() => (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>No se encontraron resultados.{"\n"}Presione la X para reiniciar los filtros.</Text>
