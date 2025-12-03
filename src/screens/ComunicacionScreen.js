@@ -183,13 +183,12 @@ export default function ComunicacionScreen() {
   useEffect(() => {
     if (!voluntario) return;
 
-    console.log('🔌 Conectando al canal consultas para voluntario:', voluntario.id);
+    console.log(' Conectando al canal consultas para voluntario:', voluntario.id);
 
     const channel = echo.channel('consultas');
 
-    // 🔴 CAMBIO CRÍTICO: Agregar el punto antes del nombre del evento
     const onMensaje = (event) => {
-      console.log('📩 Evento recibido:', event);
+      console.log(' Evento recibido:', event);
 
       try {
         const mensaje = event.mensaje;
@@ -200,12 +199,12 @@ export default function ComunicacionScreen() {
         }
 
         // Filtrar solo mensajes de este voluntario (comparación flexible)
-        if (mensaje.voluntario_id != voluntario.id) { // Usar == en lugar de ===
-          console.log('⏭️ Mensaje de otro voluntario, ignorando');
+        if (mensaje.voluntario_id != voluntario.id) {
+          console.log('⏭ Mensaje de otro voluntario, ignorando');
           return;
         }
 
-        console.log('✅ Agregando mensaje al chat');
+        console.log('Agregando mensaje al chat (de:', mensaje.de + ')');
 
         setMensajes((prev) => {
           // Evitar duplicados
@@ -230,12 +229,11 @@ export default function ComunicacionScreen() {
       }
     };
 
-    // 🔴 CRÍTICO: Agregar el punto antes del nombre del evento
     channel.listen('.MensajeChatCreado', onMensaje);
 
     // Debug: Verificar conexión
     channel.subscribed(() => {
-      console.log('✅ Suscrito al canal consultas');
+      console.log(' Suscrito al canal consultas');
     });
 
     channel.error((error) => {

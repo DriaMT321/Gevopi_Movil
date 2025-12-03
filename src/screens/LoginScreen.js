@@ -11,12 +11,12 @@ import {
   Keyboard,
   Alert,
   KeyboardAvoidingView,
-  Platform
+  Platform,
+  StyleSheet
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import colors from '../themes/colors';
+import { theme } from '../themes';
 import { useNavigation } from '@react-navigation/native';
-import styles from '../styles/loginStyles';
 import { login, getLoggedCi } from '../services/authService';
 
 const { height } = Dimensions.get('window');
@@ -37,7 +37,7 @@ export default function LoginScreen() {
   const titleColor = useRef(new Animated.Value(0)).current;
   const interpolatedColor = titleColor.interpolate({
     inputRange: [0, 1],
-    outputRange: [colors.amarillo, colors.blanco],
+    outputRange: [theme.colors.warning, theme.colors.textLight],
   });
 
   const navigation = useNavigation();
@@ -153,10 +153,6 @@ export default function LoginScreen() {
     }
   };
 
-  const toggleShowPassword = () => {
-    setShowPassword(!showPassword);
-  };
-
   return (
     <KeyboardAvoidingView 
       style={{ flex: 1 }}
@@ -173,6 +169,8 @@ export default function LoginScreen() {
                 alignItems: 'center',
                 position: 'absolute',
                 top: height / 2 - 120,
+                left: 0,
+                right: 0,
                 transform: [{ translateY: titleAnimY }],
                 zIndex: 10,
                 elevation: 10,
@@ -183,7 +181,7 @@ export default function LoginScreen() {
               </Animated.Text>
 
               <Animated.View style={{ opacity: loadingOpacity, marginTop: 15 }}>
-                <ActivityIndicator size="large" color={colors.verdeOscuro} />
+                <ActivityIndicator size="large" color={theme.colors.success} />
               </Animated.View>
             </Animated.View>
           )}
@@ -199,65 +197,155 @@ export default function LoginScreen() {
           <Animated.View style={[styles.card, { opacity: formOpacity, marginTop: isKeyboardVisible ? 100 : 0 }]}>
             <Text style={styles.cardTitle}>Inicia Sesión</Text>
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Usuario</Text>
-            <View style={styles.inputWrapper}>
-              <Ionicons 
-                name="person-outline" 
-                size={20} 
-                style={styles.icon}
-              />
-              <TextInput
-                placeholder="Ingrese su usuario"
-                style={styles.input}
-                placeholderTextColor={colors.gray}
-                value={username}
-                onChangeText={setUsername}
-              />
-            </View>
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Contraseña</Text>
-            <View style={styles.inputWrapper}>
-              <Ionicons 
-                name="lock-closed-outline" 
-                size={20}
-                style={styles.icon}
-              />
-              <TextInput
-                placeholder="Ingrese su contraseña"
-                secureTextEntry={!showPassword}
-                style={styles.input}
-                placeholderTextColor={colors.gray}
-                value={password}
-                onChangeText={setPassword}
-              />
-              <TouchableOpacity 
-                style={styles.showPasswordButton}
-                onPress={() => setShowPassword(!showPassword)}
-              >
-                <Ionicons
-                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                  size={20}
-                  color={colors.naranjaFuerte}
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Usuario</Text>
+              <View style={styles.inputWrapper}>
+                <Ionicons 
+                  name="person-outline" 
+                  size={20} 
+                  color={theme.colors.textSecondary}
+                  style={styles.icon}
                 />
-              </TouchableOpacity>
+                <TextInput
+                  placeholder="Ingrese su usuario"
+                  style={styles.input}
+                  placeholderTextColor={theme.colors.placeholder}
+                  value={username}
+                  onChangeText={setUsername}
+                />
+              </View>
             </View>
-          </View>
 
-          <TouchableOpacity 
-            style={styles.button} 
-            onPress={handleLogin}
-            activeOpacity={0.9}
-          >
-            <View style={styles.buttonContent}>
-              <Text style={styles.buttonText}>INICIAR SESIÓN</Text>
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Contraseña</Text>
+              <View style={styles.inputWrapper}>
+                <Ionicons 
+                  name="lock-closed-outline" 
+                  size={20}
+                  color={theme.colors.textSecondary}
+                  style={styles.icon}
+                />
+                <TextInput
+                  placeholder="Ingrese su contraseña"
+                  secureTextEntry={!showPassword}
+                  style={styles.input}
+                  placeholderTextColor={theme.colors.placeholder}
+                  value={password}
+                  onChangeText={setPassword}
+                />
+                <TouchableOpacity 
+                  style={styles.showPasswordButton}
+                  onPress={() => setShowPassword(!showPassword)}
+                >
+                  <Ionicons
+                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                    size={20}
+                    color={theme.colors.primary}
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
-          </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.button} 
+              onPress={handleLogin}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.buttonText}>INICIAR SESIÓN</Text>
+            </TouchableOpacity>
+          </Animated.View>
         </Animated.View>
-      </Animated.View>
-    </ScrollView>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+    justifyContent: 'center',
+  },
+  blueContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: height * 0.55,
+    backgroundColor: theme.colors.primary,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+  },
+  title: {
+    fontSize: theme.typography.fontSize.title,
+    fontWeight: theme.typography.fontWeight.extrabold,
+    letterSpacing: 2,
+  },
+  subtitle: {
+    fontSize: theme.typography.fontSize.lg,
+    color: theme.colors.textLight,
+    textAlign: 'center',
+    marginTop: height * 0.35,
+    fontWeight: theme.typography.fontWeight.medium,
+    paddingHorizontal: theme.spacing.xl,
+  },
+  card: {
+    backgroundColor: theme.colors.cardBackground,
+    marginHorizontal: theme.spacing.lg,
+    marginTop: theme.spacing.xxl,
+    padding: theme.spacing.xl,
+    borderRadius: theme.spacing.borderRadius.lg,
+    ...theme.shadows.lg,
+  },
+  cardTitle: {
+    fontSize: theme.typography.fontSize.xxl,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: theme.colors.textPrimary,
+    marginBottom: theme.spacing.lg,
+    textAlign: 'center',
+  },
+  inputContainer: {
+    marginBottom: theme.spacing.lg,
+  },
+  inputLabel: {
+    fontSize: theme.typography.fontSize.md,
+    fontWeight: theme.typography.fontWeight.semibold,
+    color: theme.colors.textPrimary,
+    marginBottom: theme.spacing.sm,
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.gray50,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.spacing.borderRadius.md,
+    paddingHorizontal: theme.spacing.md,
+    height: 50,
+  },
+  icon: {
+    marginRight: theme.spacing.sm,
+  },
+  input: {
+    flex: 1,
+    fontSize: theme.typography.fontSize.md,
+    color: theme.colors.textPrimary,
+  },
+  showPasswordButton: {
+    padding: theme.spacing.sm,
+  },
+  button: {
+    backgroundColor: theme.colors.primary,
+    paddingVertical: theme.spacing.md,
+    borderRadius: theme.spacing.borderRadius.md,
+    alignItems: 'center',
+    marginTop: theme.spacing.md,
+    ...theme.shadows.md,
+  },
+  buttonText: {
+    color: theme.colors.textLight,
+    fontSize: theme.typography.fontSize.md,
+    fontWeight: theme.typography.fontWeight.bold,
+    letterSpacing: 1,
+  },
+});
