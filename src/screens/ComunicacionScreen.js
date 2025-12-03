@@ -1,4 +1,3 @@
-// src/screens/ComunicacionScreen.js
 import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
@@ -10,12 +9,12 @@ import {
   Platform,
   FlatList,
   ActivityIndicator,
+  StyleSheet,
 } from 'react-native';
-import Ionicons from 'react-native-vector-icons/Ionicons';
+import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import styles from '../styles/cursosStyles';
 import { useNavigation } from '@react-navigation/native';
-import colors from '../themes/colors';
+import { theme } from '../themes';
 import { getLoggedCi } from '../services/authService';
 import { getVoluntarioByCi } from '../services/voluntarioService';
 import api from '../services/api';
@@ -90,7 +89,7 @@ export default function ComunicacionScreen() {
 
       for (const item of arr) {
         try {
-          await api.post('/chat-mensajes', item); // ← Cambiado de /consultas a /chat-mensajes
+          await api.post('/chat-mensajes', item);
         } catch (e) {
           nuevos.push(item);
         }
@@ -130,9 +129,6 @@ export default function ComunicacionScreen() {
     try {
       await api.post('/chat-mensajes', payload);
       setMensaje('');
-      
-      // NO recargamos aquí, confiamos en el evento WebSocket
-      // await cargarMensajes(true);
     } catch (error) {
       console.log('Error enviando consulta, guardando offline:', error);
       await guardarPendiente(payload);
@@ -146,7 +142,6 @@ export default function ComunicacionScreen() {
     }
   };
 
-  // Inicialización
   useEffect(() => {
     let mounted = true;
 
@@ -179,16 +174,15 @@ export default function ComunicacionScreen() {
     };
   }, []);
 
-  // WebSockets con Reverb
   useEffect(() => {
     if (!voluntario) return;
 
-    console.log(' Conectando al canal consultas para voluntario:', voluntario.id);
+    console.log('📡 Conectando al canal consultas para voluntario:', voluntario.id);
 
     const channel = echo.channel('consultas');
 
     const onMensaje = (event) => {
-      console.log(' Evento recibido:', event);
+      console.log('📩 Evento recibido:', event);
 
       try {
         const mensaje = event.mensaje;
@@ -198,16 +192,14 @@ export default function ComunicacionScreen() {
           return;
         }
 
-        // Filtrar solo mensajes de este voluntario (comparación flexible)
         if (mensaje.voluntario_id != voluntario.id) {
           console.log('⏭ Mensaje de otro voluntario, ignorando');
           return;
         }
 
-        console.log('Agregando mensaje al chat (de:', mensaje.de + ')');
+        console.log('✅ Agregando mensaje al chat (de:', mensaje.de + ')');
 
         setMensajes((prev) => {
-          // Evitar duplicados
           if (prev.some(m => m.id === mensaje.id)) {
             console.log('⚠️ Mensaje duplicado, ignorando');
             return prev;
@@ -231,9 +223,8 @@ export default function ComunicacionScreen() {
 
     channel.listen('.MensajeChatCreado', onMensaje);
 
-    // Debug: Verificar conexión
     channel.subscribed(() => {
-      console.log(' Suscrito al canal consultas');
+      console.log('✅ Suscrito al canal consultas');
     });
 
     channel.error((error) => {
@@ -250,102 +241,119 @@ export default function ComunicacionScreen() {
     };
   }, [voluntario]);
 
-  // Render
   const renderItem = ({ item }) => {
     const esVol = item.from === 'voluntario';
+    const esAdmin = item.from === 'admin';
 
     return (
       <View
-        style={{
-          flexDirection: 'row',
-          justifyContent: esVol ? 'flex-end' : 'flex-start',
-          marginVertical: 4,
-        }}
+        style={[
+          styles.messageContainer,
+          esVol ? styles.messageRight : styles.messageLeft
+        ]}
       >
+        {/* Avatar para admin */}
+        {esAdmin && (
+          <View style={styles.avatarContainer}>
+            <View style={[styles.avatar, { backgroundColor: theme.colors.primary }]}>
+              <FontAwesome5 name="user-shield" size={16} color={theme.colors.textLight} />
+            </View>
+          </View>
+        )}
+
         <View
-          style={{
-            maxWidth: '80%',
-            paddingHorizontal: 12,
-            paddingVertical: 8,
-            borderRadius: 16,
-            backgroundColor: esVol
-              ? colors.naranjaFuerte || '#ff9800'
-              : '#e4e6eb',
-          }}
+          style={[
+            styles.messageBubble,
+            esVol ? styles.messageBubbleVoluntario : styles.messageBubbleAdmin
+          ]}
         >
+          {/* Label de Admin */}
+          {esAdmin && (
+            <Text style={styles.senderLabel}>Administrador</Text>
+          )}
+
           <Text
-            style={{
-              color: esVol ? 'white' : '#222',
-              fontSize: 15,
-            }}
+            style={[
+              styles.messageText,
+              esVol && styles.messageTextVoluntario
+            ]}
           >
             {item.text}
           </Text>
-          <Text
-            style={{
-              marginTop: 4,
-              fontSize: 10,
-              color: esVol ? '#fcefe3' : '#777',
-              textAlign: 'right',
-            }}
-          >
-            {item.at ? new Date(item.at).toLocaleString() : ''}
-          </Text>
+
+          <View style={styles.messageFooter}>
+            <FontAwesome5 
+              name="clock" 
+              size={10} 
+              color={esVol ? theme.colors.gray200 : theme.colors.textSecondary} 
+            />
+            <Text
+              style={[
+                styles.messageTime,
+                esVol && styles.messageTimeVoluntario
+              ]}
+            >
+              {item.at ? new Date(item.at).toLocaleString('es-ES', {
+                hour: '2-digit',
+                minute: '2-digit'
+              }) : ''}
+            </Text>
+          </View>
         </View>
+
+        {/* Avatar para voluntario */}
+        {esVol && (
+          <View style={styles.avatarContainer}>
+            <View style={[styles.avatar, { backgroundColor: theme.colors.success }]}>
+              <FontAwesome5 name="user" size={16} color={theme.colors.textLight} />
+            </View>
+          </View>
+        )}
       </View>
     );
   };
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: '#f5f5f5' }}
+      style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 10}
     >
-      <View style={{ flex: 1, paddingTop: 40 }}>
-        {/* Cabecera */}
-        <View
-          style={{
-            paddingHorizontal: 16,
-            paddingBottom: 8,
-            flexDirection: 'row',
-            alignItems: 'center',
-          }}
-        >
+      <View style={styles.wrapper}>
+        {/* Header */}
+        <View style={styles.header}>
           <TouchableOpacity
             onPress={() => navigation.goBack()}
             style={styles.backButton}
           >
-            <Ionicons name="arrow-back" size={24} color={colors.naranjaFuerte} />
+            <Ionicons name="arrow-back" size={24} color={theme.colors.primary} />
           </TouchableOpacity>
-          <Text
-            style={{
-              fontSize: 22,
-              fontWeight: 'bold',
-              color: colors.naranjaFuerte,
-              marginLeft: 8,
-              flex: 1,
-            }}
-            numberOfLines={2}
-          >
-            Comunicación con el administrador
-          </Text>
+
+          <View style={styles.headerContent}>
+            <View style={styles.headerIcon}>
+              <FontAwesome5 name="comments" size={20} color={theme.colors.primary} />
+            </View>
+            <View style={styles.headerTextContainer}>
+              <Text style={styles.headerTitle}>Chat con Administrador</Text>
+              <Text style={styles.headerSubtitle}>
+                {mensajes.length > 0 ? `${mensajes.length} mensajes` : 'Sin mensajes'}
+              </Text>
+            </View>
+          </View>
         </View>
 
         {/* Lista de mensajes */}
-        <View style={{ flex: 1, paddingHorizontal: 16, marginTop: 8 }}>
+        <View style={styles.messagesContainer}>
           {loading && mensajes.length === 0 ? (
-            <View
-              style={{
-                flex: 1,
-                justifyContent: 'center',
-                alignItems: 'center',
-              }}
-            >
-              <ActivityIndicator size="large" color="#999" />
-              <Text style={{ marginTop: 8, color: '#777' }}>
-                Cargando mensajes...
-              </Text>
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={theme.colors.primary} />
+              <Text style={styles.loadingText}>Cargando mensajes...</Text>
+            </View>
+          ) : mensajes.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <FontAwesome5 name="comments" size={64} color={theme.colors.gray300} />
+              <Text style={styles.emptyTitle}>No hay mensajes aún</Text>
+              <Text style={styles.emptySubtext}>Envía tu primer mensaje al administrador</Text>
             </View>
           ) : (
             <FlatList
@@ -353,69 +361,250 @@ export default function ComunicacionScreen() {
               data={mensajes}
               keyExtractor={(item) => item.id.toString()}
               renderItem={renderItem}
-              contentContainerStyle={{ paddingVertical: 8 }}
+              contentContainerStyle={styles.messagesList}
               onContentSizeChange={scrollToBottom}
             />
           )}
         </View>
 
         {/* Input */}
-        <View
-          style={{
-            paddingHorizontal: 10,
-            paddingTop: 8,
-            paddingBottom: Platform.OS === 'android' ? 40 : 10,
-            borderTopWidth: 1,
-            borderTopColor: '#ddd',
-            backgroundColor: 'white',
-          }}
-        >
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-            }}
-          >
+        <View style={styles.inputContainer}>
+          <View style={styles.inputWrapper}>
             <TextInput
               placeholder="Escribe tu mensaje..."
+              placeholderTextColor={theme.colors.placeholder}
               value={mensaje}
               onChangeText={setMensaje}
               multiline
-              style={{
-                flex: 1,
-                maxHeight: 90,
-                borderWidth: 1,
-                borderColor: '#ddd',
-                borderRadius: 20,
-                paddingHorizontal: 20,
-                paddingVertical: 10,
-                fontSize: 15,
-                backgroundColor: '#fff',
-              }}
+              maxLength={500}
+              style={styles.input}
             />
 
             <TouchableOpacity
-              style={{
-                marginLeft: 8,
-                backgroundColor:
-                  sending || !mensaje.trim()
-                    ? '#bbb'
-                    : colors.naranjaFuerte || '#ff9800',
-                borderRadius: 20,
-                padding: 10,
-              }}
+              style={[
+                styles.sendButton,
+                (!mensaje.trim() || sending) && styles.sendButtonDisabled
+              ]}
               disabled={sending || !mensaje.trim()}
               onPress={enviarConsulta}
             >
               {sending ? (
-                <ActivityIndicator size="small" color="#fff" />
+                <ActivityIndicator size="small" color={theme.colors.textLight} />
               ) : (
-                <Ionicons name="send" size={20} color="#fff" />
+                <FontAwesome5 name="paper-plane" size={18} color={theme.colors.textLight} />
               )}
             </TouchableOpacity>
           </View>
+
+          {mensaje.length > 450 && (
+            <Text style={styles.charCounter}>
+              {mensaje.length}/500
+            </Text>
+          )}
         </View>
       </View>
     </KeyboardAvoidingView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+  },
+  wrapper: {
+    flex: 1,
+    paddingTop: theme.spacing.xxl,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.lg,
+    paddingBottom: theme.spacing.md,
+    backgroundColor: theme.colors.cardBackground,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.borderLight,
+    ...theme.shadows.sm,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: theme.spacing.borderRadius.round,
+    backgroundColor: theme.colors.gray50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: theme.spacing.md,
+  },
+  headerContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: theme.spacing.borderRadius.round,
+    backgroundColor: theme.colors.primaryLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: theme.spacing.sm,
+  },
+  headerTextContainer: {
+    flex: 1,
+  },
+  headerTitle: {
+    fontSize: theme.typography.fontSize.lg,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: theme.colors.textPrimary,
+    marginTop: theme.spacing.sm,
+  },
+  headerSubtitle: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.textSecondary,
+    marginTop: 2,
+  },
+  messagesContainer: {
+    flex: 1,
+    backgroundColor: theme.colors.gray50,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: theme.spacing.md,
+    color: theme.colors.textSecondary,
+    fontSize: theme.typography.fontSize.md,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.xl,
+  },
+  emptyTitle: {
+    fontSize: theme.typography.fontSize.xl,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: theme.colors.textPrimary,
+    marginTop: theme.spacing.lg,
+  },
+  emptySubtext: {
+    fontSize: theme.typography.fontSize.md,
+    color: theme.colors.textSecondary,
+    marginTop: theme.spacing.xs,
+    textAlign: 'center',
+  },
+  messagesList: {
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+  },
+  messageContainer: {
+    flexDirection: 'row',
+    marginVertical: theme.spacing.xs,
+    alignItems: 'flex-end',
+  },
+  messageLeft: {
+    justifyContent: 'flex-start',
+  },
+  messageRight: {
+    justifyContent: 'flex-end',
+  },
+  avatarContainer: {
+    marginHorizontal: theme.spacing.xs,
+  },
+  avatar: {
+    width: 32,
+    height: 32,
+    borderRadius: theme.spacing.borderRadius.round,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  messageBubble: {
+    maxWidth: '75%',
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.spacing.borderRadius.lg,
+  },
+  messageBubbleAdmin: {
+    backgroundColor: theme.colors.cardBackground,
+    borderBottomLeftRadius: 4,
+    ...theme.shadows.sm,
+  },
+  messageBubbleVoluntario: {
+    backgroundColor: theme.colors.primary,
+    borderBottomRightRadius: 4,
+    ...theme.shadows.sm,
+  },
+  senderLabel: {
+    fontSize: theme.typography.fontSize.xs,
+    fontWeight: theme.typography.fontWeight.semibold,
+    color: theme.colors.primary,
+    marginBottom: theme.spacing.xs,
+  },
+  messageText: {
+    fontSize: theme.typography.fontSize.md,
+    color: theme.colors.textPrimary,
+    lineHeight: 20,
+  },
+  messageTextVoluntario: {
+    color: theme.colors.textLight,
+  },
+  messageFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: theme.spacing.xs,
+    gap: 4,
+  },
+  messageTime: {
+    fontSize: theme.typography.fontSize.xs,
+    color: theme.colors.textSecondary,
+  },
+  messageTimeVoluntario: {
+    color: theme.colors.gray200,
+  },
+  inputContainer: {
+    paddingHorizontal: theme.spacing.md,
+    paddingTop: theme.spacing.sm,
+    paddingBottom: Platform.OS === 'android' ? theme.spacing.xl : theme.spacing.sm,
+    backgroundColor: theme.colors.cardBackground,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.borderLight,
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: theme.spacing.sm,
+  },
+  input: {
+    flex: 1,
+    minHeight: 44,
+    maxHeight: 100,
+    backgroundColor: theme.colors.gray50,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.spacing.borderRadius.xl,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    fontSize: theme.typography.fontSize.md,
+    color: theme.colors.textPrimary,
+  },
+  sendButton: {
+    width: 44,
+    height: 44,
+    borderRadius: theme.spacing.borderRadius.round,
+    backgroundColor: theme.colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...theme.shadows.md,
+  },
+  sendButtonDisabled: {
+    backgroundColor: theme.colors.gray300,
+  },
+  charCounter: {
+    fontSize: theme.typography.fontSize.xs,
+    color: theme.colors.textSecondary,
+    textAlign: 'right',
+    marginTop: theme.spacing.xs,
+  },
+});

@@ -194,7 +194,7 @@ export default function LoginScreen() {
             </Animated.Text>
           )}
 
-          <Animated.View style={[styles.card, { opacity: formOpacity, marginTop: isKeyboardVisible ? 100 : 0 }]}>
+          <Animated.View style={[styles.card, { opacity: formOpacity, marginTop: isKeyboardVisible ? 50 : 0 }]}>
             <Text style={styles.cardTitle}>Inicia Sesión</Text>
 
             <View style={styles.inputContainer}>
@@ -285,7 +285,7 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.lg,
     color: theme.colors.textLight,
     textAlign: 'center',
-    marginTop: height * 0.35,
+    marginTop: height * 0.05,
     fontWeight: theme.typography.fontWeight.medium,
     paddingHorizontal: theme.spacing.xl,
   },
