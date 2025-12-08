@@ -6,7 +6,7 @@ import Pusher from 'pusher-js/react-native';
 global.Pusher = Pusher;
 //10.26.11.238 universidad
 // CAMBIA ESTO por la IP de tu PC
-const LARAVEL_HOST = '192.168.0.2';
+const LARAVEL_HOST = '10.26.9.173';
 const WS_PORT = 8080;
 
 // Son los mismos valores que tienes en el .env de Laravel

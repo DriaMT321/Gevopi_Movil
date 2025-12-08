@@ -58,11 +58,11 @@ export const crearSolicitudAyuda = async (payload) => {
       // ❌ QUITAR: direccion,
     };
 
-    console.log('📤 Payload enviado:', payloadToSend);
+    console.log('Payload enviado:', payloadToSend);
 
     const response = await api.post('/solicitudes-ayuda', payloadToSend);
 
-    console.log('✅ Respuesta del servidor:', response.data);
+    console.log('Respuesta del servidor:', response.data);
 
     const s = response.data.data || response.data;
 
@@ -76,10 +76,9 @@ export const crearSolicitudAyuda = async (payload) => {
       tipo: s.tipo,
       voluntarioId: s.voluntario_id?.toString(),
       estado: s.estado,
-      // ❌ QUITAR: direccion: s.direccion,
     };
   } catch (error) {
-    console.error('❌ Error completo:', {
+    console.error('Error completo:', {
       message: error.message,
       response: error.response?.data,
       status: error.response?.status,

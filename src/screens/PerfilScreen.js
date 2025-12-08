@@ -605,12 +605,7 @@ export default function PerfilScreen() {
           <Animated.View
             style={[
               styles.modalContent,
-              {
-                transform: [
-                  { translateY: panelAnim },
-                  { translateY: modalOffsetAnim }
-                ]
-              }
+              
             ]}
           >
             <View style={styles.modalHeader}>

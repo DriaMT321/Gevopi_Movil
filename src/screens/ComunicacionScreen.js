@@ -182,13 +182,13 @@ export default function ComunicacionScreen() {
     const channel = echo.channel('consultas');
 
     const onMensaje = (event) => {
-      console.log('📩 Evento recibido:', event);
+      console.log('Evento recibido:', event);
 
       try {
         const mensaje = event.mensaje;
         
         if (!mensaje) {
-          console.log('⚠️ Evento sin mensaje');
+          console.log('vento sin mensaje');
           return;
         }
 
@@ -197,11 +197,11 @@ export default function ComunicacionScreen() {
           return;
         }
 
-        console.log('✅ Agregando mensaje al chat (de:', mensaje.de + ')');
+        console.log('Agregando mensaje al chat (de:', mensaje.de + ')');
 
         setMensajes((prev) => {
           if (prev.some(m => m.id === mensaje.id)) {
-            console.log('⚠️ Mensaje duplicado, ignorando');
+            console.log('Mensaje duplicado, ignorando');
             return prev;
           }
 
@@ -217,18 +217,18 @@ export default function ComunicacionScreen() {
 
         scrollToBottom();
       } catch (e) {
-        console.error('❌ Error manejando MensajeChatCreado:', e);
+        console.error('Error manejando MensajeChatCreado:', e);
       }
     };
 
     channel.listen('.MensajeChatCreado', onMensaje);
 
     channel.subscribed(() => {
-      console.log('✅ Suscrito al canal consultas');
+      console.log('Suscrito al canal consultas');
     });
 
     channel.error((error) => {
-      console.error('❌ Error en canal consultas:', error);
+      console.error('Error en canal consultas:', error);
     });
 
     return () => {
