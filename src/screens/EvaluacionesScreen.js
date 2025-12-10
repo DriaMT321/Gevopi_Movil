@@ -71,6 +71,8 @@ export default function EvaluacionesScreen() {
                 observaciones: reporte.observaciones,
                 recomendaciones: reporte.recomendaciones,
                 estado_general: reporte.estado_general,
+                cursos_recomendados: reporte.cursos_recomendados || [],
+                aptitud_necesidades: reporte.aptitud_necesidades || null,
               });
             }
             
@@ -86,6 +88,8 @@ export default function EvaluacionesScreen() {
                 observaciones: reporte.observaciones,
                 recomendaciones: reporte.recomendaciones,
                 estado_general: reporte.estado_general,
+                cursos_recomendados: reporte.cursos_recomendados || [],
+                aptitud_necesidades: reporte.aptitud_necesidades || null,
               });
             }
           });
